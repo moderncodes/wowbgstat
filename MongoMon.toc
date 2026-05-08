@@ -1,0 +1,18 @@
+## Interface: 20505
+## Title: MongoMon
+## Notes: Battleground stats, KB tracking, post-match window (TBC Anniversary 2.5.5)
+## Author: TBC Anniversary port
+## Version: 2.0.0
+## SavedVariables: mongo_mon_db
+## SavedVariablesPerCharacter: mongo_mon_ui
+## X-Min-Interface: 20501
+
+Config.lua
+CombatLog.lua
+Scoreboard.lua
+SpecScanner.lua
+Nameplates.lua
+History.lua
+Report.lua
+UI.lua
+Core.lua
