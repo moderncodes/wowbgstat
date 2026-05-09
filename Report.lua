@@ -10,7 +10,7 @@ T.on_killing_blow = function(victim_name, victim_class)
     PlaySoundFile(T.kb_sound, "Master")
 
     if not image_frame then
-        image_frame = CreateFrame("Frame", "MongoMonKBOverlay", UIParent)
+        image_frame = CreateFrame("Frame", "BgStatKBOverlay", UIParent)
         image_frame:SetSize(256, 256)
         image_frame:SetPoint("CENTER", 0, 100)
         image_frame.tex = image_frame:CreateTexture(nil, "OVERLAY")
@@ -31,18 +31,18 @@ local function format_number(n)
 end
 T.format_number = format_number
 
--- Brief BG-chat broadcast for /mm send. Pulls top-3 dmg from this match.
+-- Brief BG-chat broadcast for /bgstat send. Pulls top-3 dmg from this match.
 function mod.send_to_chat()
     local now = GetTime()
     if now - last_chat_send < T.send_to_chat_cooldown then
-        DEFAULT_CHAT_FRAME:AddMessage("MongoMon: chat cooldown active")
+        DEFAULT_CHAT_FRAME:AddMessage("bgstat: chat cooldown active")
         return
     end
     last_chat_send = now
 
     local me = UnitName("player")
     local mine = T.combat_log.get_player(me)
-    SendChatMessage("== MongoMon After-Action ==", "BATTLEGROUND")
+    SendChatMessage("== bgstat After-Action ==", "BATTLEGROUND")
     if mine then
         SendChatMessage(string.format(
             "%s: %d kills / %d deaths / %s damage / %s healing",
