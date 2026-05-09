@@ -1,18 +1,18 @@
 local _, T = ...
 
 T.class_image = {
-    WARRIOR = "Interface\\AddOns\\MongoMon\\Res\\MadBaby",
-    ROGUE   = "Interface\\AddOns\\MongoMon\\Res\\Broseph",
-    HUNTER  = "Interface\\AddOns\\MongoMon\\Res\\DerpFace",
-    MAGE    = "Interface\\AddOns\\MongoMon\\Res\\MadBaby",
-    PRIEST  = "Interface\\AddOns\\MongoMon\\Res\\MadBaby",
-    PALADIN = "Interface\\AddOns\\MongoMon\\Res\\MadBaby",
-    SHAMAN  = "Interface\\AddOns\\MongoMon\\Res\\MadBaby",
-    WARLOCK = "Interface\\AddOns\\MongoMon\\Res\\MadBaby",
-    DRUID   = "Interface\\AddOns\\MongoMon\\Res\\MadBaby",
+    WARRIOR = "Interface\\AddOns\\BgStat\\Res\\MadBaby",
+    ROGUE   = "Interface\\AddOns\\BgStat\\Res\\Broseph",
+    HUNTER  = "Interface\\AddOns\\BgStat\\Res\\DerpFace",
+    MAGE    = "Interface\\AddOns\\BgStat\\Res\\MadBaby",
+    PRIEST  = "Interface\\AddOns\\BgStat\\Res\\MadBaby",
+    PALADIN = "Interface\\AddOns\\BgStat\\Res\\MadBaby",
+    SHAMAN  = "Interface\\AddOns\\BgStat\\Res\\MadBaby",
+    WARLOCK = "Interface\\AddOns\\BgStat\\Res\\MadBaby",
+    DRUID   = "Interface\\AddOns\\BgStat\\Res\\MadBaby",
 }
 
-T.kb_sound = "Interface\\AddOns\\MongoMon\\Res\\Hehhe.mp3"
+T.kb_sound = "Interface\\AddOns\\BgStat\\Res\\Hehhe.mp3"
 
 T.bg_zones = {
     ["Warsong Gulch"]    = "WSG",

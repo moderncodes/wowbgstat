@@ -15,6 +15,14 @@ These are verified from primary sources. Do not assume retail behavior.
 - **Interface version (TOC)**: `20505`
 - **Engine**: Modern retail-derived engine running TBC content. Many APIs migrated to namespaced versions.
 
+### Addon naming conventions
+- **Folder name and TOC filename must match exactly**, including case, for the client to recognize the addon. Source: https://wowpedia.fandom.com/wiki/TOC_format ("The .toc file and addon folder name need to match"). `MyAddOn/` → `MyAddOn.toc`. A mismatched TOC is silently ignored.
+- **Folder name shows in `Interface/AddOns/` and is the default in-game display name.** Override the in-game display via the `## Title:` TOC directive — it can differ from folder casing (e.g. folder `BgStat` with `## Title: bgstat` shows lowercase in the AddOns list).
+- **Addon name lookups in WoW APIs are case-insensitive** (`EnableAddOn`, `IsAddOnLoaded`, `LoadAddOn`, etc.), so case in API call sites doesn't matter — only the filesystem match does. Source: https://wowpedia.fandom.com/wiki/API_EnableAddOn
+- **Slash command identifiers** follow `SLASH_NAME1`, `SLASH_NAME2`, etc. globals; `SlashCmdList.NAME` for the handler. The `NAME` part is uppercase by convention (it's a Lua global). The slash text itself (`"/foo"`) is conventionally lowercase. Slash text matching at runtime is case-insensitive.
+- **Convention across the WoW addon ecosystem is PascalCase folder names** (`WeakAuras`, `Details`, `BigWigs`, `ElvUI`, `HonorSpy`). All-lowercase folders work but stand out. SavedVariables identifiers conventionally match the folder casing (`BgStatDB`, not `bgstat_db`), even when internal Lua locals follow snake_case.
+- **Texture/sound paths are filesystem paths** that must match the folder name exactly: `Interface\\AddOns\\BgStat\\Res\\Foo.blp`. After a rename, every such string in `Config.lua` (and elsewhere) must be updated or the texture silently fails to load.
+
 ### API namespace migrations (Anniversary-specific)
 Functions that exist as globals on retail/older clients but moved to `C_*` namespaces on Anniversary:
 - `GetAddOnMetadata(name, key)` → **`C_AddOns.GetAddOnMetadata(name, key)`** (global is nil)
@@ -136,11 +144,14 @@ No dual-spec on TBC, so `talentGroup` parameter is `nil` or `1`.
 - `RAID_CLASS_COLORS` exists and is keyed by class token (uppercase: "WARRIOR", "DRUID", etc.).
 - **`SimpleHTML` widget is broken** on Anniversary. Avoid.
 - **No localStorage / no persistent state inside artifacts.** Use SavedVariables for everything.
+- **`addon_name` is provided as the first vararg in every Lua file**: `local addon_name, T = ...`. WoW sets it to the literal folder name. This is the canonical way to gate `ADDON_LOADED`: `if event == "ADDON_LOADED" and (...) == addon_name then ...`. Renaming the folder automatically updates `addon_name` — no code change needed for the gate.
 
 ### SavedVariables behavior
 - `## SavedVariables: name` for shared across characters.
 - `## SavedVariablesPerCharacter: name` for per-character.
 - A debug log written to a global-like variable (`_G.MY_LOG`) does NOT persist across `/reload` unless declared in the TOC SavedVariables. This bites every time you forget.
+- **SavedVariables identifier conventionally matches folder casing** (`BgStatDB`, not `bgstat_db`). It's a Lua global declared by the TOC, and matching the addon's display identity makes it easy to find in `WTF/Account/<acct>/SavedVariables/<Addon>.lua` on disk. Internal Lua locals can still be snake_case; the SavedVariables global is the user-facing exception.
+- **Renaming SavedVariables identifiers breaks data continuity.** A user upgrading from `OldName/` with `OldNameDB` to `NewName/` with `NewNameDB` will have their old data sitting on disk at `WTF/.../SavedVariables/OldName.lua` and the new addon won't see it. Three migration options: (a) load old global in `ADDON_LOADED` and copy fields if both exist briefly; (b) document a manual file rename in the README; (c) accept fresh-start. Option (a) only works while both addon folders coexist on disk, since SavedVariables only load for installed/enabled addons. For private/single-user addons, (c) is usually fine.
 
 ### Common UI gotchas verified during this build
 - **Headers and rows must use the same sizing model** (`SetSize` + `SetJustifyH`) or columns visually drift. `SetText` alone on header buttons doesn't size correctly relative to row cells.
@@ -215,3 +226,9 @@ Do not assume retail signatures apply. Do not assume TBC Classic 2021 signatures
 - `GetBattlefieldScore` for 40 players in AV is fine (~1ms).
 - Table sort on 80 rows on every UI refresh is fine. Don't add caching machinery prematurely.
 - Lua tables with thousands of entries are fine. SavedVariables capped at ~100 matches × 40 players keeps file size negligible.
+
+### 8. Hardcoding the addon's own name in code or texture paths
+
+Don't write `"MyAddOn"` as a string literal anywhere code can avoid it. Texture paths like `Interface\\AddOns\\MyAddOn\\Res\\Foo.blp` are unavoidable, but the addon's own identity in `ADDON_LOADED` gates, frame names, and chat output should derive from `addon_name` (the vararg) where reasonable, or live in `Config.lua` as a single constant the rest of the code references. Otherwise, a future rename touches dozens of files.
+
+When the addon is renamed, the work is mostly mechanical search-and-replace, but the surfaces that need attention are: folder name, TOC filename, TOC `## Title:` directive, `## SavedVariables:` and `## SavedVariablesPerCharacter:` identifier names, the SavedVariables identifiers themselves wherever they appear in `.lua` files, slash command globals (`SLASH_NAME1/2`, `SlashCmdList.NAME`), `CreateFrame` named globals, texture path strings in `Config.lua`, chat output strings, and the README. Missing any one of these produces a silent partial-rename state.
