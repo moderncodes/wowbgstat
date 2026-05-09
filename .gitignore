@@ -1,0 +1,9 @@
+# IntelliJ project files
+.idea/
+
+# Asset files - users supply their own per the README install instructions
+Res/
+
+# OS junk
+.DS_Store
+Thumbs.db
