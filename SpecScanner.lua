@@ -79,28 +79,18 @@ local function clear_pending()
     pending_unit, pending_started = nil, 0
 end
 
--- Inside tick(), add at the very start:
 local function tick()
     if not enabled then return end
     if not T.combat_log then return end
 
-    if not _G.MM_spec_log then _G.MM_spec_log = {} end
-
     if pending_unit and (GetTime() - pending_started) > INSPECT_TIMEOUT then
-        table.insert(_G.MM_spec_log, string.format(
-            "[%s] TIMEOUT for %s", date("%H:%M:%S"), pending_unit))
         clear_pending()
     end
 
     if pending_unit then return end
 
     local unit, name = pick_target()
-    if not unit then
-        return
-    end
-
-    table.insert(_G.MM_spec_log, string.format(
-        "[%s] inspecting %s (%s)", date("%H:%M:%S"), name, unit))
+    if not unit then return end
 
     pending_unit, pending_started = name, GetTime()
     NotifyInspect(unit)
@@ -110,15 +100,7 @@ end
 -- Source: https://wowpedia.fandom.com/wiki/INSPECT_READY (event renamed from
 -- INSPECT_TALENT_READY in patch 5.0.4 and applies to Anniversary's modern engine).
 local function on_inspect_ready(guid)
-    if not _G.MM_spec_log then _G.MM_spec_log = {} end
-    table.insert(_G.MM_spec_log, string.format(
-        "[%s] INSPECT_READY guid=%s pending=%s",
-        date("%H:%M:%S"), tostring(guid), tostring(pending_unit)))
-
-    if not pending_unit or not guid then
-        table.insert(_G.MM_spec_log, "  -> bailing: no pending or no guid")
-        return
-    end
+    if not pending_unit or not guid then return end
 
     local pending_guid
     for _, unit in ipairs(iter_friendly_units()) do
@@ -128,10 +110,6 @@ local function on_inspect_ready(guid)
         end
     end
 
-    table.insert(_G.MM_spec_log, string.format(
-        "  -> resolved pending_guid=%s match=%s",
-        tostring(pending_guid), tostring(pending_guid == guid)))
-
     if pending_guid ~= guid then
         clear_pending()
         return
@@ -139,22 +117,13 @@ local function on_inspect_ready(guid)
 
     local best_tab, best_points = nil, -1
     for tab = 1, 3 do
-        local r = { GetTalentTabInfo(tab, true) }
-        table.insert(_G.MM_spec_log, string.format(
-            "  -> tab %d returned %d values: [1]=%s [2]=%s [3]=%s [4]=%s [5]=%s",
-            tab, #r,
-            tostring(r[1]), tostring(r[2]), tostring(r[3]),
-            tostring(r[4]), tostring(r[5])))
-        local points_spent = r[5] or 0
+        local _, _, _, _, points_spent = GetTalentTabInfo(tab, true)
+        points_spent = points_spent or 0
         if type(points_spent) ~= "number" then points_spent = 0 end
         if points_spent > best_points then
             best_tab, best_points = tab, points_spent
         end
     end
-
-    table.insert(_G.MM_spec_log, string.format(
-        "  -> best_tab=%s best_points=%s",
-        tostring(best_tab), tostring(best_points)))
 
     if best_points > 0 then
         detected[pending_unit] = { tab = best_tab, points = best_points }
@@ -162,14 +131,10 @@ local function on_inspect_ready(guid)
         if p then
             p.spec_class = p.class
             p.spec_tab   = best_tab
-            table.insert(_G.MM_spec_log, "  -> stored on combat_log player record")
         else
             mod._pending_specs = mod._pending_specs or {}
             mod._pending_specs[pending_unit] = best_tab
-            table.insert(_G.MM_spec_log, "  -> stashed in _pending_specs (no scoreboard record yet)")
         end
-    else
-        table.insert(_G.MM_spec_log, "  -> no points, skipping")
     end
 
     clear_pending()
@@ -194,11 +159,6 @@ function mod.merge_pending_into_player(name)
 end
 
 function mod.start()
-    if not _G.MM_spec_log then _G.MM_spec_log = {} end
-    table.insert(_G.MM_spec_log, string.format(
-        "[%s] mod.start() called, enabled=%s",
-        date("%H:%M:%S"), tostring(enabled)))
-
     if not enabled then return end
     wipe(detected)
     if mod._pending_specs then wipe(mod._pending_specs) end
@@ -210,9 +170,6 @@ function mod.start()
         scanner_frame:SetScript("OnEvent", function(self, event, guid)
             on_inspect_ready(guid)
         end)
-        table.insert(_G.MM_spec_log, string.format(
-            "[%s] scanner_frame created, INSPECT_READY registered",
-            date("%H:%M:%S")))
     end
 
     scanner_frame.elapsed = 0
@@ -223,17 +180,9 @@ function mod.start()
             tick()
         end
     end)
-    table.insert(_G.MM_spec_log, string.format(
-        "[%s] OnUpdate handler set, scanner active",
-        date("%H:%M:%S")))
 end
 
 function mod.stop()
-    if _G.MM_spec_log then
-        table.insert(_G.MM_spec_log, string.format(
-            "[%s] mod.stop() called",
-            date("%H:%M:%S")))
-    end
     if scanner_frame then
         scanner_frame:SetScript("OnUpdate", nil)
     end

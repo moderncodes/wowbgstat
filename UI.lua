@@ -625,7 +625,7 @@ end
 local function build_main_frame()
     if main_frame then return main_frame end
 
-    local f = CreateFrame("Frame", "MongoMonMainFrame", UIParent, "BasicFrameTemplateWithInset")
+    local f = CreateFrame("Frame", "BgStatMainFrame", UIParent, "BasicFrameTemplateWithInset")
     f:SetSize(FRAME_W, FRAME_H)
     f:SetPoint("CENTER")
     f:SetMovable(true)
@@ -643,7 +643,7 @@ local function build_main_frame()
         end
     end)
     f:SetClampedToScreen(true)
-    f.TitleText:SetText("MongoMon")
+    f.TitleText:SetText("bgstat")
     f:Hide()
 
     -- Restore saved position
@@ -665,7 +665,7 @@ local function build_main_frame()
     -- Build tabs at the bottom of the main frame
     local tab_names = { "Last Match", "History", "Classes", "Specs" }
     for i, name in ipairs(tab_names) do
-        local tab = CreateFrame("Button", "MongoMonTab" .. i, f, "CharacterFrameTabButtonTemplate")
+        local tab = CreateFrame("Button", "BgStatTab" .. i, f, "CharacterFrameTabButtonTemplate")
         tab:SetID(i)
         tab:SetText(name)
         tab:SetScript("OnClick", function() show_tab(i) end)
