@@ -14,7 +14,7 @@ local class_loc_to_token = {
 --   6 faction, 7 rank, 8 race, 9 class (localized), 10 filename (classToken),
 --   11 damageDone, 12 healingDone
 -- Source: https://vanilla-wow-archive.fandom.com/wiki/API_GetBattlefieldScore
--- Confirmed empirically via /mmscore: returns 13 values where [7]=rank,
+-- Verified empirically: returns 13 values where [7]=rank,
 -- [8]=race, [9]=Warlock, [10]=WARLOCK, [11]=damage, [12]=healing
 function mod.refresh()
     RequestBattlefieldScoreData()
