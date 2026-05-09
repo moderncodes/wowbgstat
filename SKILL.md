@@ -1,6 +1,6 @@
 ---
 name: tbc-anniversary-addon
-description: Build and modify WoW addons targeting TBC Anniversary 2.5.5 (build 67157). This is NOT TBC Classic 2021 and NOT retail. The Anniversary client uses a hybrid engine — modern features like C_NamePlate, C_Timer, C_AddOns coexist with Vanilla/TBC-era API signatures (e.g. GetBattlefieldScore returns the 12-slot Vanilla layout, not the 16-slot retail layout). Use this skill when writing or debugging any Lua, .toc, or SavedVariables code for the Anniversary client.
+description: Build and modify WoW addons targeting TBC Anniversary 2.5.5 (build 67157). This is NOT TBC Classic 2021 and NOT retail. The Anniversary client uses a hybrid engine — modern features like C_NamePlate, C_Timer, C_AddOns coexist with Vanilla/TBC-era API signatures (e.g. GetBattlefieldScore returns the 12-slot Vanilla layout, not the 16-slot retail layout). Use this skill when writing or debugging any Lua, .toc, or SavedVariables code for the Anniversary client. Primary project using this skill: bgstat (https://github.com/moderncodes/wowbgstat).
 ---
 
 # TBC Anniversary Addon Development
@@ -148,9 +148,9 @@ No dual-spec on TBC, so `talentGroup` parameter is `nil` or `1`.
 - **Row cell text doesn't auto-update** when refreshing a table. Iterate the row pool, hide unused rows beyond `#data`, otherwise leftover content from a prior refresh shows.
 - **`PanelTemplates_TabResize(tab, 0)`** is required for tabs to size correctly.
 
-## Universal anti-patterns I encountered during this build
+## Universal anti-patterns to avoid
 
-These caused real bugs over many hours. Avoid them.
+These caused real bugs over many hours of build work. Avoid them.
 
 ### 1. Trusting positional unpacks across client versions
 The `GetBattlefieldScore` retail-vs-Anniversary mismatch took multiple debugging rounds to find. **Always look up the documented signature for the specific client version** (Vanilla wiki for vanilla/TBC, Wowpedia for retail). Empirical `/print` testing inside the live game confirms which signature is in use.

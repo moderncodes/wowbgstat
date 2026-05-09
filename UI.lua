@@ -252,10 +252,10 @@ local function build_last_match_tab(parent)
     frame.empty = empty
 
     -- Faction filter buttons. Saved per-character.
-    -- mongo_mon_ui.faction_filter: "all" | "alliance" | "horde"
+    -- BgStatUI.faction_filter: "all" | "alliance" | "horde"
     local filter_buttons = {}
     local function set_filter(value)
-        mongo_mon_ui.faction_filter = value
+        BgStatUI.faction_filter = value
         for v, btn in pairs(filter_buttons) do
             if v == value then
                 btn:LockHighlight()
@@ -307,7 +307,7 @@ local function build_last_match_tab(parent)
         local match = T.history.get_last()
         if not match then return {} end
         local me = UnitName("player")
-        local filter = (mongo_mon_ui and mongo_mon_ui.faction_filter) or "all"
+        local filter = (BgStatUI and BgStatUI.faction_filter) or "all"
         local rows = {}
         for name, p in pairs(match.players) do
             local include = (filter == "all")
@@ -349,7 +349,7 @@ local function build_last_match_tab(parent)
         for _, b in pairs(filter_buttons) do b:Show() end
 
         -- Sync the highlighted button to the saved filter
-        local current = (mongo_mon_ui and mongo_mon_ui.faction_filter) or "all"
+        local current = (BgStatUI and BgStatUI.faction_filter) or "all"
         for v, btn in pairs(filter_buttons) do
             if v == current then btn:LockHighlight() else btn:UnlockHighlight() end
         end
@@ -634,12 +634,12 @@ local function build_main_frame()
     f:SetScript("OnDragStart", f.StartMoving)
     f:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
-        if mongo_mon_ui then
+        if BgStatUI then
             local point, _, rel_point, x, y = self:GetPoint()
-            mongo_mon_ui.point     = point
-            mongo_mon_ui.rel_point = rel_point
-            mongo_mon_ui.x         = x
-            mongo_mon_ui.y         = y
+            BgStatUI.point     = point
+            BgStatUI.rel_point = rel_point
+            BgStatUI.x         = x
+            BgStatUI.y         = y
         end
     end)
     f:SetClampedToScreen(true)
@@ -647,10 +647,10 @@ local function build_main_frame()
     f:Hide()
 
     -- Restore saved position
-    if mongo_mon_ui and mongo_mon_ui.point then
+    if BgStatUI and BgStatUI.point then
         f:ClearAllPoints()
-        f:SetPoint(mongo_mon_ui.point, UIParent, mongo_mon_ui.rel_point,
-                   mongo_mon_ui.x, mongo_mon_ui.y)
+        f:SetPoint(BgStatUI.point, UIParent, BgStatUI.rel_point,
+                   BgStatUI.x, BgStatUI.y)
     end
 
     local content_parent = CreateFrame("Frame", nil, f)
@@ -689,7 +689,7 @@ end
 -- ============================================================================
 
 function mod.show(tab_index)
-    if not mongo_mon_ui then mongo_mon_ui = {} end
+    if not BgStatUI then BgStatUI = {} end
     local f = build_main_frame()
     f:Show()
     show_tab(tab_index or active_tab)

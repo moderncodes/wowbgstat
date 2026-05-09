@@ -34,13 +34,13 @@ INSTALLATION
 
 SLASH COMMANDS
 --------------
-  /mm           - toggle the window
-  /mm last      - open to Last Match tab
-  /mm history   - open to History tab
-  /mm classes   - open to Classes tab
-  /mm send      - broadcast brief summary to BG chat (60s cooldown)
-  /mm clear     - wipe all saved match history
-  /mm help      - show command list
+  /bgstat           - toggle the window
+  /bgstat last      - open to Last Match tab
+  /bgstat history   - open to History tab
+  /bgstat classes   - open to Classes tab
+  /bgstat send      - broadcast brief summary to BG chat (60s cooldown)
+  /bgstat clear     - wipe all saved match history
+  /bgstat help      - show command list
 
 THE THREE TABS
 --------------

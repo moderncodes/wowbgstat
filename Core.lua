@@ -87,7 +87,7 @@ local function on_match_end()
     -- during the BG. This captures every "+X honor" event including bonus,
     -- objective, and per-kill honor.
     T.history.save_current(zone_to_save or "Unknown BG", honor_match_total)
-    saved_match_ref = mongo_mon_db.matches[#mongo_mon_db.matches]
+    saved_match_ref = BgStatDB.matches[#BgStatDB.matches]
 
     if T.spec_scanner then T.spec_scanner.stop() end
     T.nameplates.clear_all()
@@ -102,7 +102,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
     if event == "ADDON_LOADED" then
         if (...) == addon_name then
             T.history.init()
-            if not mongo_mon_ui then mongo_mon_ui = {} end
+            if not BgStatUI then BgStatUI = {} end
         end
 
     elseif event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
@@ -170,13 +170,13 @@ for _, e in ipairs({
     "CHAT_MSG_COMBAT_HONOR_GAIN",
 }) do frame:RegisterEvent(e) end
 
-SLASH_MONGOMON1, SLASH_MONGOMON2 = "/mm", "/mongomon"
+SLASH_MONGOMON1, SLASH_MONGOMON2 = "/bgstat", "/bgs"
 SlashCmdList.MONGOMON = function(msg)
     msg = (msg or ""):lower():match("^%s*(.-)%s*$")
     if msg == "" then
         T.ui.toggle()
     elseif msg == "help" then
-        DEFAULT_CHAT_FRAME:AddMessage("MongoMon: /mm (toggle window) | /mm last | /mm history | /mm classes | /mm specs | /mm send | /mm clear")
+        DEFAULT_CHAT_FRAME:AddMessage("MongoMon: /bgstat (toggle window) | /bgstat last | /bgstat history | /bgstat classes | /bgstat specs | /bgstat send | /bgstat clear")
     elseif msg == "last" or msg == "report" then
         T.ui.show(1)
     elseif msg == "history" then
@@ -192,7 +192,7 @@ SlashCmdList.MONGOMON = function(msg)
         DEFAULT_CHAT_FRAME:AddMessage("MongoMon: history cleared")
         T.ui.refresh_active()
     else
-        DEFAULT_CHAT_FRAME:AddMessage("MongoMon: unknown command - try /mm help")
+        DEFAULT_CHAT_FRAME:AddMessage("MongoMon: unknown command - try /bgstat help")
     end
 end
 
@@ -248,7 +248,7 @@ end
 
 SLASH_MMINSPECT1 = "/mminspect"
 SlashCmdList.MMINSPECT = function()
-    local m = mongo_mon_db.matches[#mongo_mon_db.matches]
+    local m = BgStatDB.matches[#BgStatDB.matches]
     if not m then
         DEFAULT_CHAT_FRAME:AddMessage("no matches saved")
         return
@@ -297,7 +297,7 @@ end
 
 SLASH_MMRENDER1 = "/mmrender"
 SlashCmdList.MMRENDER = function()
-    local m = mongo_mon_db.matches[#mongo_mon_db.matches]
+    local m = BgStatDB.matches[#BgStatDB.matches]
     if not m then return end
     local lines = { "=== What Last Match would render ===" }
     local count = 0
@@ -388,7 +388,7 @@ end
 
 SLASH_MMSCRUB1 = "/mmscrub"
 SlashCmdList.MMSCRUB = function()
-    if not mongo_mon_db or not mongo_mon_db.matches then
+    if not BgStatDB or not BgStatDB.matches then
         DEFAULT_CHAT_FRAME:AddMessage("MM scrub: no database")
         return
     end
@@ -400,7 +400,7 @@ SlashCmdList.MMSCRUB = function()
     }
 
     local fixed = 0
-    for _, m in ipairs(mongo_mon_db.matches) do
+    for _, m in ipairs(BgStatDB.matches) do
         for _, p in pairs(m.players or {}) do
             if type(p.damage)  ~= "number" then p.damage  = 0; fixed = fixed + 1 end
             if type(p.healing) ~= "number" then p.healing = 0; fixed = fixed + 1 end
@@ -452,7 +452,7 @@ SlashCmdList.MMSPECDIAG = function()
     local recs_with_damage = 0
     local recs_with_both = 0
 
-    for i, m in ipairs(mongo_mon_db.matches) do
+    for i, m in ipairs(BgStatDB.matches) do
         for name, p in pairs(m.players) do
             total_recs = total_recs + 1
             if p.spec_tab then recs_with_spec = recs_with_spec + 1 end
@@ -470,7 +470,7 @@ SlashCmdList.MMSPECDIAG = function()
     table.insert(lines, "")
     table.insert(lines, "=== Per-match breakdown ===")
 
-    for i, m in ipairs(mongo_mon_db.matches) do
+    for i, m in ipairs(BgStatDB.matches) do
         local with_spec = 0
         local with_damage = 0
         local with_both = 0
@@ -507,11 +507,11 @@ end
 
 SLASH_MMPURGEBROKEN1 = "/mmpurgebroken"
 SlashCmdList.MMPURGEBROKEN = function()
-    if not mongo_mon_db or not mongo_mon_db.matches then return end
-    local before = #mongo_mon_db.matches
+    if not BgStatDB or not BgStatDB.matches then return end
+    local before = #BgStatDB.matches
     local kept = {}
 
-    for _, m in ipairs(mongo_mon_db.matches) do
+    for _, m in ipairs(BgStatDB.matches) do
         -- Keep matches that have at least one player with damage > 0,
         -- OR that have no spec data at all (older but otherwise intact).
         -- Drop matches that have spec data but all-zero damage (the broken
@@ -528,7 +528,7 @@ SlashCmdList.MMPURGEBROKEN = function()
         end
     end
 
-    mongo_mon_db.matches = kept
+    BgStatDB.matches = kept
     DEFAULT_CHAT_FRAME:AddMessage(string.format(
         "|cff00d606MongoMon:|r purged %d broken matches (%d -> %d)",
         before - #kept, before, #kept))

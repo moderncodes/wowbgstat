@@ -4,8 +4,8 @@ local mod = {}
 T.history = mod
 
 function mod.init()
-    if not mongo_mon_db then mongo_mon_db = {} end
-    if not mongo_mon_db.matches then mongo_mon_db.matches = {} end
+    if not BgStatDB then BgStatDB = {} end
+    if not BgStatDB.matches then BgStatDB.matches = {} end
 end
 
 function mod.save_current(zone, honor_delta)
@@ -42,16 +42,16 @@ function mod.save_current(zone, honor_delta)
         })
     end
 
-    table.insert(mongo_mon_db.matches, snapshot)
-    while #mongo_mon_db.matches > T.max_history do
-        table.remove(mongo_mon_db.matches, 1)
+    table.insert(BgStatDB.matches, snapshot)
+    while #BgStatDB.matches > T.max_history do
+        table.remove(BgStatDB.matches, 1)
     end
 end
 
-function mod.get_all()    return mongo_mon_db.matches end
-function mod.delete_all() mongo_mon_db.matches = {} end
+function mod.get_all()    return BgStatDB.matches end
+function mod.delete_all() BgStatDB.matches = {} end
 
-function mod.get_last() return mongo_mon_db.matches[#mongo_mon_db.matches] end
+function mod.get_last() return BgStatDB.matches[#BgStatDB.matches] end
 
 function mod.summary_by_zone()
     local me = UnitName("player")
@@ -59,7 +59,7 @@ function mod.summary_by_zone()
     local totals = { games = 0, wins = 0, losses = 0, incomplete = 0,
                      kills = 0, deaths = 0, honor = 0 }
 
-    for _, m in ipairs(mongo_mon_db.matches) do
+    for _, m in ipairs(BgStatDB.matches) do
         local z = m.zone or "Unknown"
         if not out[z] then
             out[z] = { games = 0, wins = 0, losses = 0, incomplete = 0,
@@ -101,7 +101,7 @@ end
 
 function mod.lifetime_class_stats()
     local out = {}
-    for _, m in ipairs(mongo_mon_db.matches) do
+    for _, m in ipairs(BgStatDB.matches) do
         for name, p in pairs(m.players) do
             local c = p.class or "UNKNOWN"
             if not out[c] then
@@ -141,7 +141,7 @@ function mod.lifetime_spec_stats()
     local out = {}
     local matches_with_specs = 0
 
-    for _, m in ipairs(mongo_mon_db.matches) do
+    for _, m in ipairs(BgStatDB.matches) do
         local has_any_spec = false
         for _, p in pairs(m.players) do
             if p.spec_tab then has_any_spec = true; break end
