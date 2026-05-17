@@ -100,10 +100,12 @@ function mod.summary_by_zone()
 end
 
 function mod.lifetime_class_stats()
+    local me = UnitName("player")
     local out = {}
     for _, m in ipairs(BgStatDB.matches) do
         for name, p in pairs(m.players) do
-            local c = p.class or "UNKNOWN"
+            if name ~= me then
+                local c = p.class or "UNKNOWN"
             if not out[c] then
                 out[c] = {
                     appearances = 0,
@@ -130,6 +132,7 @@ function mod.lifetime_class_stats()
                 row.best_kills = { value = p.kills, name = name }
             end
         end
+        end
     end
     return out
 end
@@ -138,7 +141,13 @@ function mod.lifetime_spec_stats()
     -- Returns aggregate stats per (class, spec) across all matches that
     -- have spec data on at least one player. Matches with no spec data
     -- on any player are excluded entirely.
+    --
+    -- Self is split into a separate `you` table (same shape, keyed by
+    -- class/spec) so the UI can render self rows highlighted without
+    -- skewing the aggregated population averages.
+    local me = UnitName("player")
     local out = {}
+    local you = {}
     local matches_with_specs = 0
 
     for _, m in ipairs(BgStatDB.matches) do
@@ -151,8 +160,9 @@ function mod.lifetime_spec_stats()
             for name, p in pairs(m.players) do
                 if p.spec_tab and p.class then
                     local key = p.class .. "/" .. p.spec_tab
-                    if not out[key] then
-                        out[key] = {
+                    local target = (name == me) and you or out
+                    if not target[key] then
+                        target[key] = {
                             class       = p.class,
                             spec_tab    = p.spec_tab,
                             appearances = 0,
@@ -161,9 +171,7 @@ function mod.lifetime_spec_stats()
                             best_healing = { value = 0, name = nil },
                         }
                     end
-                    -- Defensive: old saved matches sometimes have non-number
-                    -- damage/healing due to a fixed scoreboard alignment bug.
-                    local row = out[key]
+                    local row = target[key]
                     row.appearances = row.appearances + 1
                     row.damage  = row.damage  + (p.damage  or 0)
                     row.healing = row.healing + (p.healing or 0)
@@ -179,5 +187,5 @@ function mod.lifetime_spec_stats()
             end
         end
     end
-    return out, matches_with_specs
+    return out, matches_with_specs, you
 end

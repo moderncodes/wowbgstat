@@ -25,3 +25,9 @@ T.max_history           = 100
 T.send_to_chat_cooldown = 60
 -- Spec auto-scanner toggle. Set to false here to disable scanning entirely.
 T.spec_scan_enabled = true
+
+-- When true, bgstat disables WoW's "I'm out of range" / "I'm too far away"
+-- voice lines (the Sound_EnableErrorSpeech CVar) on addon load and never
+-- re-enables it. This affects ALL sources of error speech, not just inspect:
+-- your own out-of-range casts, follow attempts, trade attempts, etc.
+T.disable_error_speech = true

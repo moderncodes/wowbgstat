@@ -547,7 +547,9 @@ local function build_specs_tab(parent)
         { key = "label",        label = "Spec + Class", width = 170,
           cell = function(_, row)
               local spec = T.spec_scanner.spec_name(row.class, row.spec_tab) or "?"
-              return string.format("%s %s", spec, colored(row.class, row.class or "?"))
+              local base = string.format("%s %s", spec, colored(row.class, row.class or "?"))
+              if row._is_self then base = base .. " (YOU)" end
+              return base
           end },
         { key = "appearances",  label = "Seen",      width = 50,  align = "CENTER" },
         { key = "damage",       label = "Total Dmg", width = 80,  align = "CENTER",
@@ -563,8 +565,30 @@ local function build_specs_tab(parent)
     }
 
     local function get_rows()
-        local stats, _ = T.history.lifetime_spec_stats()
+        local stats, _, you = T.history.lifetime_spec_stats()
         local rows = {}
+
+        -- Self rows: same shape as aggregated rows, with "(YOU)" suffix and
+        -- _highlight set so build_table tints them gold via its existing logic.
+        -- Inline placement so they sort naturally with the rest.
+        for _, r in pairs(you or {}) do
+            local spec = T.spec_scanner.spec_name(r.class, r.spec_tab) or "?"
+            table.insert(rows, {
+                class       = r.class,
+                spec_tab    = r.spec_tab,
+                label       = string.format("%s %s", spec, r.class or "?"),
+                appearances = r.appearances,
+                damage      = r.damage,
+                healing     = r.healing,
+                avg_damage  = r.appearances > 0 and (r.damage  / r.appearances) or 0,
+                avg_healing = r.appearances > 0 and (r.healing / r.appearances) or 0,
+                kills       = r.kills,
+                deaths      = r.deaths,
+                _highlight  = true,
+                _is_self    = true,
+            })
+        end
+
         for _, r in pairs(stats) do
             table.insert(rows, {
                 class       = r.class,
@@ -587,8 +611,8 @@ local function build_specs_tab(parent)
         columns, get_rows, { key = "avg_damage", dir = "desc" })
 
     function frame:Refresh()
-        local stats, count = T.history.lifetime_spec_stats()
-        local has_any = next(stats) ~= nil
+        local stats, count, you = T.history.lifetime_spec_stats()
+        local has_any = next(stats) ~= nil or next(you or {}) ~= nil
         if not has_any then
             empty:Show()
             specs_table.container:Hide()

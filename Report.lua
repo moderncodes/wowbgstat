@@ -31,6 +31,80 @@ local function format_number(n)
 end
 T.format_number = format_number
 
+-- ============================================================================
+-- End-of-match auto report
+-- ============================================================================
+-- Computes team-vs-team damage and healing percentages and emits two messages:
+--   1) Private (print to chat frame, only you see): your personal stats line
+--   2) Public (INSTANCE_CHAT channel): team-vs-team comparison
+--
+-- Algorithm matches retail MongoMon: percent = (larger - smaller) / smaller * 100.
+-- E.g. team 8M vs enemy 6M -> "outdamaged the enemy by 33%".
+function mod.send_end_of_match()
+    local match = T.history.get_last()
+    if not match then return end
+    if match.winner == nil then return end   -- skip incomplete matches
+
+    local me = UnitName("player")
+    local mine = match.players[me]
+
+    -- Private line: your stats. Print only, no SendChatMessage.
+    if mine then
+        print(string.format(
+            "|cff00d606bgstat:|r You: %d kills / %d deaths / %s damage / %s healing / %d honor",
+            mine.kills or 0, mine.deaths or 0,
+            format_number(mine.damage or 0),
+            format_number(mine.healing or 0),
+            match.honor_delta or 0))
+    end
+
+    -- Aggregate team totals from saved match. Faction: 1 = Alliance, 0 = Horde.
+    local my_faction = mine and mine.faction
+    if not my_faction then return end
+
+    local team_dmg, team_heal = 0, 0
+    local enemy_dmg, enemy_heal = 0, 0
+    for _, p in pairs(match.players) do
+        if p.faction == my_faction then
+            team_dmg  = team_dmg  + (p.damage  or 0)
+            team_heal = team_heal + (p.healing or 0)
+        else
+            enemy_dmg  = enemy_dmg  + (p.damage  or 0)
+            enemy_heal = enemy_heal + (p.healing or 0)
+        end
+    end
+
+    local function pct_diff(a, b)
+        -- Returns rounded integer percent by which the larger exceeds the smaller.
+        local lo = math.min(a, b)
+        if lo <= 0 then return nil end
+        return math.floor((math.max(a, b) - lo) / lo * 100 + 0.5)
+    end
+
+    local dmg_pct  = pct_diff(team_dmg,  enemy_dmg)
+    local heal_pct = pct_diff(team_heal, enemy_heal)
+
+    if dmg_pct then
+        if team_dmg >= enemy_dmg then
+            SendChatMessage(string.format(
+                "Your team outdamaged the enemy by %d%%.", dmg_pct), "INSTANCE_CHAT")
+        else
+            SendChatMessage(string.format(
+                "The enemy outdamaged your team by %d%%.", dmg_pct), "INSTANCE_CHAT")
+        end
+    end
+
+    if heal_pct then
+        if team_heal >= enemy_heal then
+            SendChatMessage(string.format(
+                "Your team outhealed the enemy by %d%%.", heal_pct), "INSTANCE_CHAT")
+        else
+            SendChatMessage(string.format(
+                "The enemy outhealed your team by %d%%.", heal_pct), "INSTANCE_CHAT")
+        end
+    end
+end
+
 -- Brief BG-chat broadcast for /bgstat send. Pulls top-3 dmg from this match.
 function mod.send_to_chat()
     local now = GetTime()
@@ -42,13 +116,13 @@ function mod.send_to_chat()
 
     local me = UnitName("player")
     local mine = T.combat_log.get_player(me)
-    SendChatMessage("== bgstat After-Action ==", "BATTLEGROUND")
+    SendChatMessage("== bgstat After-Action ==", "INSTANCE_CHAT")
     if mine then
         SendChatMessage(string.format(
             "%s: %d kills / %d deaths / %s damage / %s healing",
             me, mine.kills or 0, mine.deaths or 0,
             format_number(mine.damage or 0),
-            format_number(mine.healing or 0)), "BATTLEGROUND")
+            format_number(mine.healing or 0)), "INSTANCE_CHAT")
     end
 
     local list = {}
@@ -60,6 +134,6 @@ function mod.send_to_chat()
     table.sort(list, function(a, b) return a.damage > b.damage end)
     for i = 1, math.min(3, #list) do
         SendChatMessage(string.format("  %d. %s - %s",
-            i, list[i].name, format_number(list[i].damage)), "BATTLEGROUND")
+            i, list[i].name, format_number(list[i].damage)), "INSTANCE_CHAT")
     end
 end

@@ -7,6 +7,7 @@ local last_winner      = nil
 local current_zone     = nil
 local honor_listen_until = 0
 local saved_match_ref    = nil
+local report_pending     = false
 
 -- Build patterns from Blizzard's localized format strings.
 -- Source: https://warcraft.wiki.gg/wiki/Parsing_event_messages
@@ -29,17 +30,21 @@ end
 
 local honor_match_total = 0   -- accumulator for current BG
 
+-- Returns (gained, kind) where kind is "gain" (per-kill, COMBATLOG_HONORGAIN)
+-- or "award" (bonus/objective/win, COMBATLOG_HONORAWARD). The win bonus at
+-- match end is always an "award" message, which we use to trigger the
+-- end-of-match report at the right moment.
 local function parse_honor_message(msg)
-    if not msg then return 0 end
+    if not msg then return 0, nil end
     if honor_gain_pattern then
         local _, _, est = msg:match(honor_gain_pattern)
-        if est then return tonumber(est) or 0 end
+        if est then return tonumber(est) or 0, "gain" end
     end
     if honor_award_pattern then
         local awarded = msg:match(honor_award_pattern)
-        if awarded then return tonumber(awarded) or 0 end
+        if awarded then return tonumber(awarded) or 0, "award" end
     end
-    return 0
+    return 0, nil
 end
 
 local function bg_state()
@@ -54,6 +59,32 @@ local function on_match_start(zone)
     honor_match_total = 0
     saved_match_ref   = nil
     T.combat_log.reset()
+
+    -- Seed our own player record with current spec. The scanner skips self
+    -- (only inspects friendlies); we read directly via GetTalentTabInfo for
+    -- ourselves. Scoreboard.refresh later merges BG numbers in without
+    -- overwriting these fields. isInspect=false reads the player's own talents.
+    -- Source: https://wowpedia.fandom.com/wiki/API_GetTalentTabInfo
+    local me = UnitName("player")
+    local _, my_class = UnitClass("player")
+    if me and my_class then
+        local best_tab, best_points = nil, -1
+        for tab = 1, 3 do
+            local _, _, _, _, points_spent = GetTalentTabInfo(tab, false)
+            points_spent = points_spent or 0
+            if type(points_spent) ~= "number" then points_spent = 0 end
+            if points_spent > best_points then
+                best_tab, best_points = tab, points_spent
+            end
+        end
+        if best_tab and best_points > 0 then
+            T.combat_log.set_player(me, {
+                class      = my_class,
+                spec_class = my_class,
+                spec_tab   = best_tab,
+            })
+        end
+    end
 
     -- Start the spec scanner if enabled.
     if T.spec_scanner and T.spec_scan_enabled then
@@ -87,13 +118,29 @@ local function on_match_end()
     -- Listen 30s after match end for trailing credits (final win bonus,
     -- last-second HK honor that lands after the winner is announced).
     honor_listen_until = GetTime() + 30
+    report_pending     = true
+
+    -- Fallback: if no award message arrives within 8 seconds (e.g. a draw
+    -- where no team won the BG, or some edge case where the award message
+    -- gets swallowed), send the report anyway with whatever honor we have.
+    -- The normal path is the CHAT_MSG_COMBAT_HONOR_GAIN handler, which fires
+    -- the report immediately on the first "award" message after match end --
+    -- typically 1-3 seconds after the winner resolves.
+    C_Timer.After(8, function()
+        if report_pending then
+            report_pending = false
+            T.report.send_end_of_match()
+        end
+    end)
 end
 
 frame:SetScript("OnEvent", function(self, event, ...)
     if event == "ADDON_LOADED" then
         if (...) == addon_name then
             T.history.init()
-            if not BgStatUI then BgStatUI = {} end
+            if T.disable_error_speech then
+                SetCVar("Sound_EnableErrorSpeech", "0")
+            end
         end
 
     elseif event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
@@ -135,7 +182,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
 
     elseif event == "CHAT_MSG_COMBAT_HONOR_GAIN" then
         local raw_msg = ...
-        local gained = parse_honor_message(raw_msg)
+        local gained, kind = parse_honor_message(raw_msg)
 
         if gained > 0 then
             if in_bg then
@@ -143,6 +190,16 @@ frame:SetScript("OnEvent", function(self, event, ...)
             elseif GetTime() < honor_listen_until and saved_match_ref then
                 saved_match_ref.honor_delta = (saved_match_ref.honor_delta or 0) + gained
                 T.ui.refresh_active()
+
+                -- The win bonus is an "award" message that lands 1-3 seconds
+                -- after match end. Fire the report immediately when we see it,
+                -- so chat audience is still in the BG.
+                if kind == "award" and report_pending then
+                    report_pending = false
+                    -- Tiny grace period for any second simultaneous award
+                    -- (e.g. quest credit + faction bonus), then send.
+                    C_Timer.After(0.5, function() T.report.send_end_of_match() end)
+                end
             end
         end
     end
@@ -156,6 +213,23 @@ for _, e in ipairs({
 }) do frame:RegisterEvent(e) end
 
 SLASH_BGSTAT1, SLASH_BGSTAT2 = "/bgstat", "/bgs"
+SLASH_BGSTATSCAN1 = "/bgstatscan"
+SlashCmdList.BGSTATSCAN = function()
+    local fr = T.spec_scanner
+    local n = GetNumGroupMembers and GetNumGroupMembers() or 0
+    local in_range, total = 0, 0
+    if IsInRaid() then
+        for i = 1, n do
+            if UnitExists("raid"..i) then
+                total = total + 1
+                if CheckInteractDistance("raid"..i, 1) then in_range = in_range + 1 end
+            end
+        end
+    end
+    DEFAULT_CHAT_FRAME:AddMessage(string.format(
+        "|cff00d606bgstat scan:|r enabled=%s detected=%d friendlies=%d in_range=%d",
+        tostring(fr.is_enabled()), fr.get_detected_count(), total, in_range))
+end
 SlashCmdList.BGSTAT = function(msg)
     msg = (msg or ""):lower():match("^%s*(.-)%s*$")
     if msg == "" then
