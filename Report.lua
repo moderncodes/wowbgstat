@@ -35,7 +35,7 @@ T.format_number = format_number
 -- End-of-match auto report
 -- ============================================================================
 -- Public: ONE line to INSTANCE_CHAT (BG chat) in retail MongoMon's format:
---   "[bgstat vX.Y.Z] Your team went K - D. <dmg compare>. <heal compare>."
+--   "[BgStat vX.Y.Z] Your team went K - D. <dmg compare>. <heal compare>."
 -- Private: print to chat frame, only you see, with your personal stats.
 -- Popup: visual report window via T.ui.show_match_popup (Phase B).
 function mod.send_end_of_match()

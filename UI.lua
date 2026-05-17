@@ -335,7 +335,7 @@ local function popup_build()
         end
     end)
     f:SetClampedToScreen(true)
-    f.TitleText:SetText("bgstat — Match Report")
+    f.TitleText:SetText("BgStat — Match Report")
     f:Hide()
 
     -- Restore saved position
@@ -832,7 +832,7 @@ local function build_main_frame()
         end
     end)
     f:SetClampedToScreen(true)
-    f.TitleText:SetText("bgstat")
+    f.TitleText:SetText("BgStat")
     f:Hide()
 
     -- Restore saved position

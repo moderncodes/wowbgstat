@@ -6,6 +6,7 @@
 ## SavedVariables: BgStatDB
 ## SavedVariablesPerCharacter: BgStatUI
 ## X-Min-Interface: 20501
+## OptionalDeps: Ace3
 
 Config.lua
 Options.lua

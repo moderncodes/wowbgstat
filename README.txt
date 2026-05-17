@@ -1,4 +1,4 @@
-bgstat - TBC Anniversary Edition (2.5.5)
+BgStat - TBC Anniversary Edition (2.5.5)
 ============================================
 
 Built for TBC Anniversary, build 2.5.5.67157
@@ -18,7 +18,7 @@ INSTALLATION
      - Broseph.blp     (Rogue)
      - DerpFace.blp    (Hunter)
 
-3. Restart WoW. Confirm "bgstat" appears in the AddOns list.
+3. Restart WoW. Confirm "BgStat" appears in the AddOns list.
 
 SLASH COMMANDS
 --------------
