@@ -8,6 +8,7 @@
 ## X-Min-Interface: 20501
 
 Config.lua
+Options.lua
 CombatLog.lua
 Scoreboard.lua
 SpecScanner.lua

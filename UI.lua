@@ -229,6 +229,175 @@ local function build_table(parent, x, y, w, h, columns, get_rows, default_sort)
 end
 
 -- ============================================================================
+-- Match Report popup
+-- ============================================================================
+-- A movable, dismissable window auto-shown on match end. Displays five lines
+-- matching retail MongoMon's after-action report (minus flavor text). Also
+-- offers a "Re-send to Chat" button that respects the standard cooldown.
+
+local popup_frame
+
+local function popup_compute_lines(match)
+    -- Returns ordered array of 5 display strings.
+    local me = UnitName("player")
+    local mine = match.players[me]
+    if not mine or not mine.faction then return nil end
+    local my_faction = mine.faction
+
+    local team_kills, team_deaths       = 0, 0
+    local team_dmg, team_heal           = 0, 0
+    local enemy_dmg, enemy_heal         = 0, 0
+    local team_total_kills              = 0
+    for _, p in pairs(match.players) do
+        if p.faction == my_faction then
+            team_kills  = team_kills  + (p.kills  or 0)
+            team_deaths = team_deaths + (p.deaths or 0)
+            team_dmg    = team_dmg    + (p.damage  or 0)
+            team_heal   = team_heal   + (p.healing or 0)
+            team_total_kills = team_total_kills + (p.kills or 0)
+        else
+            enemy_dmg   = enemy_dmg   + (p.damage  or 0)
+            enemy_heal  = enemy_heal  + (p.healing or 0)
+        end
+    end
+
+    local function pct_diff(a, b)
+        local lo = math.min(a, b)
+        if lo <= 0 then return nil end
+        return string.format("%.2f", (math.max(a, b) - lo) / lo * 100)
+    end
+    local function pct_of(num, denom)
+        if not denom or denom <= 0 then return "0" end
+        return string.format("%.0f", num / denom * 100)
+    end
+
+    local lines = {}
+
+    -- Line 1: team K/D summary
+    table.insert(lines, string.format(
+        "Your team went %d - %d.", team_kills, team_deaths))
+
+    -- Line 2: damage comparison
+    local dmg_pct = pct_diff(team_dmg, enemy_dmg)
+    if dmg_pct then
+        if team_dmg >= enemy_dmg then
+            table.insert(lines, string.format(
+                "Your team outdamaged the enemy by %s%%.", dmg_pct))
+        else
+            table.insert(lines, string.format(
+                "The enemy outdamaged your team by %s%%.", dmg_pct))
+        end
+    end
+
+    -- Line 3: healing comparison
+    local heal_pct = pct_diff(team_heal, enemy_heal)
+    if heal_pct then
+        if team_heal >= enemy_heal then
+            table.insert(lines, string.format(
+                "Your team outhealed the enemy team by %s%%.", heal_pct))
+        else
+            table.insert(lines, string.format(
+                "The enemy outhealed your team by %s%%.", heal_pct))
+        end
+    end
+
+    -- Line 4: personal % contribution
+    table.insert(lines, string.format(
+        "You did %s%% of your team's damage, and accounted for %s%% of their killing blows.",
+        pct_of(mine.damage or 0, team_dmg),
+        pct_of(mine.kills  or 0, team_total_kills)))
+
+    -- Line 5: personal healing %
+    table.insert(lines, string.format(
+        "You did %s%% of your team's healing.",
+        pct_of(mine.healing or 0, team_heal)))
+
+    return lines
+end
+
+local function popup_build()
+    local f = CreateFrame("Frame", "BgStatMatchReportPopup", UIParent,
+                          "BasicFrameTemplateWithInset")
+    f:SetSize(440, 240)
+    f:SetPoint("CENTER", 0, 100)
+    f:SetMovable(true)
+    f:EnableMouse(true)
+    f:RegisterForDrag("LeftButton")
+    f:SetScript("OnDragStart", f.StartMoving)
+    f:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        if BgStatUI then
+            local point, _, rel_point, x, y = self:GetPoint()
+            BgStatUI.popup_point     = point
+            BgStatUI.popup_rel_point = rel_point
+            BgStatUI.popup_x         = x
+            BgStatUI.popup_y         = y
+        end
+    end)
+    f:SetClampedToScreen(true)
+    f.TitleText:SetText("bgstat — Match Report")
+    f:Hide()
+
+    -- Restore saved position
+    if BgStatUI and BgStatUI.popup_point then
+        f:ClearAllPoints()
+        f:SetPoint(BgStatUI.popup_point, UIParent,
+                   BgStatUI.popup_rel_point or BgStatUI.popup_point,
+                   BgStatUI.popup_x or 0, BgStatUI.popup_y or 100)
+    end
+
+    f.subtitle = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    f.subtitle:SetPoint("TOPLEFT", 14, -28)
+    f.subtitle:SetJustifyH("LEFT")
+
+    f.body = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    f.body:SetPoint("TOPLEFT", 14, -50)
+    f.body:SetPoint("TOPRIGHT", -14, -50)
+    f.body:SetJustifyH("LEFT")
+    f.body:SetJustifyV("TOP")
+    f.body:SetSpacing(4)
+
+    local send_btn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    send_btn:SetSize(140, 24)
+    send_btn:SetText("Re-send to Chat")
+    send_btn:SetPoint("BOTTOMRIGHT", -14, 10)
+    send_btn:SetScript("OnClick", function()
+        T.report.send_to_chat()
+    end)
+    f.send_btn = send_btn
+
+    return f
+end
+
+function mod.show_match_popup(match)
+    if not match then return end
+    if match.winner == nil then return end   -- skip incomplete matches
+
+    if not popup_frame then popup_frame = popup_build() end
+
+    local lines = popup_compute_lines(match)
+    if not lines or #lines == 0 then return end
+
+    -- Header: BG name + result
+    local me = UnitName("player")
+    local mine = match.players[me]
+    local result = ""
+    if match.winner ~= nil and mine then
+        result = (mine.faction == match.winner)
+            and "|cff00ff00WIN|r" or "|cffff0000LOSS|r"
+    end
+    popup_frame.subtitle:SetText(string.format("%s — %s",
+        bg_short_name(match.zone or "Unknown"), result))
+    popup_frame.body:SetText(table.concat(lines, "\n\n"))
+
+    popup_frame:Show()
+end
+
+function mod.hide_match_popup()
+    if popup_frame then popup_frame:Hide() end
+end
+
+-- ============================================================================
 -- Tab content: Last Match
 -- ============================================================================
 
@@ -474,14 +643,14 @@ local function build_classes_tab(parent)
         { key = "class",        label = "Class",    width = 90,
           cell = function(c) return colored(c, c or "?") end },
         { key = "appearances",  label = "Seen",     width = 60, align = "CENTER" },
-        { key = "damage",       label = "Total Dmg", width = 90, align = "CENTER",
+        { key = "avg_damage",   label = "Avg Dmg",  width = 80, align = "CENTER",
           cell = function(v) return fmt(v) end },
-        { key = "healing",      label = "Total Heal", width = 90, align = "CENTER",
+        { key = "avg_healing",  label = "Avg Heal", width = 80, align = "CENTER",
           cell = function(v) return fmt(v) end },
         { key = "kills",        label = "Total K",  width = 70, align = "CENTER" },
         { key = "deaths",       label = "Total D",  width = 70, align = "CENTER" },
-        { key = "avg_damage",   label = "Avg Dmg",  width = 80, align = "CENTER",
-          cell = function(v) return fmt(v) end },
+        { key = "kd_ratio",     label = "K/D",      width = 60, align = "CENTER",
+          cell = function(v) return string.format("%.2f", v or 0) end },
         { key = "best_player",  label = "Best Damage Dealer", width = 200,
           cell = function(_, row)
               if not row.best_player then return "—" end
@@ -497,11 +666,11 @@ local function build_classes_tab(parent)
             table.insert(rows, {
                 class       = class,
                 appearances = r.appearances,
-                damage      = r.damage,
-                healing     = r.healing,
                 kills       = r.kills,
                 deaths      = r.deaths,
-                avg_damage  = r.appearances > 0 and (r.damage / r.appearances) or 0,
+                kd_ratio    = (r.kills or 0) / math.max(r.deaths or 0, 1),
+                avg_damage  = r.appearances > 0 and (r.damage  / r.appearances) or 0,
+                avg_healing = r.appearances > 0 and (r.healing / r.appearances) or 0,
                 best_player = r.best_damage and r.best_damage.name or nil,
                 best_value  = r.best_damage and r.best_damage.value or 0,
             })
@@ -551,17 +720,15 @@ local function build_specs_tab(parent)
               if row._is_self then base = base .. " (YOU)" end
               return base
           end },
-        { key = "appearances",  label = "Seen",      width = 50,  align = "CENTER" },
-        { key = "damage",       label = "Total Dmg", width = 80,  align = "CENTER",
+        { key = "appearances",  label = "Seen",      width = 60,  align = "CENTER" },
+        { key = "avg_damage",   label = "Avg Dmg",   width = 95,  align = "CENTER",
           cell = function(v) return fmt(v) end },
-        { key = "healing",      label = "Total Heal",width = 80,  align = "CENTER",
-          cell = function(v) return fmt(v) end },
-        { key = "avg_damage",   label = "Avg Dmg",   width = 75,  align = "CENTER",
-          cell = function(v) return fmt(v) end },
-        { key = "avg_healing",  label = "Avg Heal",  width = 75,  align = "CENTER",
+        { key = "avg_healing",  label = "Avg Heal",  width = 95,  align = "CENTER",
           cell = function(v) return fmt(v) end },
         { key = "kills",        label = "Total K",   width = 95,  align = "CENTER" },
         { key = "deaths",       label = "Total D",   width = 95,  align = "CENTER" },
+        { key = "kd_ratio",     label = "K/D",       width = 60,  align = "CENTER",
+          cell = function(v) return string.format("%.2f", v or 0) end },
     }
 
     local function get_rows()
@@ -578,12 +745,11 @@ local function build_specs_tab(parent)
                 spec_tab    = r.spec_tab,
                 label       = string.format("%s %s", spec, r.class or "?"),
                 appearances = r.appearances,
-                damage      = r.damage,
-                healing     = r.healing,
-                avg_damage  = r.appearances > 0 and (r.damage  / r.appearances) or 0,
-                avg_healing = r.appearances > 0 and (r.healing / r.appearances) or 0,
                 kills       = r.kills,
                 deaths      = r.deaths,
+                kd_ratio    = (r.kills or 0) / math.max(r.deaths or 0, 1),
+                avg_damage  = r.appearances > 0 and (r.damage  / r.appearances) or 0,
+                avg_healing = r.appearances > 0 and (r.healing / r.appearances) or 0,
                 _highlight  = true,
                 _is_self    = true,
             })
@@ -596,12 +762,11 @@ local function build_specs_tab(parent)
                 label       = (T.spec_scanner.spec_name(r.class, r.spec_tab) or "?")
                               .. " " .. (r.class or "?"),
                 appearances = r.appearances,
-                damage      = r.damage,
-                healing     = r.healing,
-                avg_damage  = r.appearances > 0 and (r.damage  / r.appearances) or 0,
-                avg_healing = r.appearances > 0 and (r.healing / r.appearances) or 0,
                 kills       = r.kills,
                 deaths      = r.deaths,
+                kd_ratio    = (r.kills or 0) / math.max(r.deaths or 0, 1),
+                avg_damage  = r.appearances > 0 and (r.damage  / r.appearances) or 0,
+                avg_healing = r.appearances > 0 and (r.healing / r.appearances) or 0,
             })
         end
         return rows

@@ -93,7 +93,7 @@ local function on_match_start(zone)
     end
 
     DEFAULT_CHAT_FRAME:AddMessage(string.format(
-        "|cff00d606bgstat:|r tracking %s", zone))
+        "|cff00d606BgStat:|r tracking %s", zone))
 end
 
 local function on_match_end()
@@ -138,6 +138,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
     if event == "ADDON_LOADED" then
         if (...) == addon_name then
             T.history.init()
+            T.options.init()    -- loads saved config overrides into T.*, builds panel
             if T.disable_error_speech then
                 SetCVar("Sound_EnableErrorSpeech", "0")
             end
@@ -227,7 +228,7 @@ SlashCmdList.BGSTATSCAN = function()
         end
     end
     DEFAULT_CHAT_FRAME:AddMessage(string.format(
-        "|cff00d606bgstat scan:|r enabled=%s detected=%d friendlies=%d in_range=%d",
+        "|cff00d606BgStat scan:|r enabled=%s detected=%d friendlies=%d in_range=%d",
         tostring(fr.is_enabled()), fr.get_detected_count(), total, in_range))
 end
 SlashCmdList.BGSTAT = function(msg)
@@ -235,7 +236,7 @@ SlashCmdList.BGSTAT = function(msg)
     if msg == "" then
         T.ui.toggle()
     elseif msg == "help" then
-        DEFAULT_CHAT_FRAME:AddMessage("bgstat: /bgstat (toggle window) | /bgstat last | /bgstat history | /bgstat classes | /bgstat specs | /bgstat send | /bgstat clear")
+        DEFAULT_CHAT_FRAME:AddMessage("BgStat: /bgstat (toggle window) | /bgstat last | /bgstat history | /bgstat classes | /bgstat specs | /bgstat send | /bgstat config | /bgstat clear")
     elseif msg == "last" or msg == "report" then
         T.ui.show(1)
     elseif msg == "history" then
@@ -244,13 +245,15 @@ SlashCmdList.BGSTAT = function(msg)
         T.ui.show(3)
     elseif msg == "specs" then
         T.ui.show(4)
+    elseif msg == "config" or msg == "options" then
+        T.options.open()
     elseif msg == "send" then
         T.report.send_to_chat()
     elseif msg == "clear" then
         T.history.delete_all()
-        DEFAULT_CHAT_FRAME:AddMessage("bgstat: history cleared")
+        DEFAULT_CHAT_FRAME:AddMessage("BgStat: history cleared")
         T.ui.refresh_active()
     else
-        DEFAULT_CHAT_FRAME:AddMessage("bgstat: unknown command - try /bgstat help")
+        DEFAULT_CHAT_FRAME:AddMessage("BgStat: unknown command - try /bgstat help")
     end
 end
