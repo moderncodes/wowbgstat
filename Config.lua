@@ -14,6 +14,13 @@ T.class_image = {
 
 T.kb_sound = "Interface\\AddOns\\BgStat\\Res\\Hehhe.mp3"
 
+-- KB image popup placement, anchored to UIParent.
+-- TOPRIGHT sits under the minimap; BOTTOMRIGHT sits above the bag bar.
+T.kb_image_point = "TOPRIGHT"
+T.kb_image_x     = -20
+T.kb_image_y     = -220
+T.kb_image_size  = 192
+
 T.bg_zones = {
     ["Warsong Gulch"]    = "WSG",
     ["Arathi Basin"]     = "AB",

@@ -11,8 +11,8 @@ T.on_killing_blow = function(victim_name, victim_class)
 
     if not image_frame then
         image_frame = CreateFrame("Frame", "BgStatKBOverlay", UIParent)
-        image_frame:SetSize(256, 256)
-        image_frame:SetPoint("CENTER", 0, 100)
+        image_frame:SetSize(T.kb_image_size, T.kb_image_size)
+        image_frame:SetPoint(T.kb_image_point, UIParent, T.kb_image_point, T.kb_image_x, T.kb_image_y)
         image_frame.tex = image_frame:CreateTexture(nil, "OVERLAY")
         image_frame.tex:SetAllPoints()
         image_frame:Hide()
