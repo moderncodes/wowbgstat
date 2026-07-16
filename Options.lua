@@ -16,7 +16,6 @@ local CONFIG_KEYS = {
     "spec_scan_enabled",
     "disable_error_speech",
     "max_history",
-    "send_to_chat_cooldown",
 }
 
 local function load_saved()
@@ -81,18 +80,6 @@ local options_table = {
             get = function() return get("max_history") end,
             set = function(_, v) set("max_history", v) end,
             order = 11,
-            width = "full",
-        },
-        send_to_chat_cooldown = {
-            type = "range",
-            name = "Send-to-chat cooldown (seconds)",
-            desc = "Minimum time between /bgstat send broadcasts.",
-            min = 30,
-            max = 300,
-            step = 30,
-            get = function() return get("send_to_chat_cooldown") end,
-            set = function(_, v) set("send_to_chat_cooldown", v) end,
-            order = 12,
             width = "full",
         },
         danger_header = {
