@@ -536,11 +536,12 @@ local function build_last_match_tab(parent)
 
         local your_line = "—"
         if mine then
+            local honor_text = match.honor_capped and "honor capped" or string.format("%d honor gained", match.honor_delta or 0)
             your_line = string.format(
-                "You: %d kills / %d deaths / %s damage / %s healing / %d honor gained",
+                "You: %d kills / %d deaths / %s damage / %s healing / %s",
                 mine.kills or 0, mine.deaths or 0,
                 fmt(mine.damage or 0), fmt(mine.healing or 0),
-                match.honor_delta or 0)
+                honor_text)
         end
         subtitle:SetText(string.format("%s — %s\n%s",
             format_time(match.timestamp), match.zone or "?", your_line))

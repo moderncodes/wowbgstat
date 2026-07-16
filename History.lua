@@ -8,12 +8,13 @@ function mod.init()
     if not BgStatDB.matches then BgStatDB.matches = {} end
 end
 
-function mod.save_current(zone, honor_delta)
+function mod.save_current(zone, honor_delta, honor_capped)
     local snapshot = {
         zone         = zone,
         timestamp    = time(),
         winner       = GetBattlefieldWinner(),
         honor_delta  = honor_delta or 0,
+        honor_capped = honor_capped or nil,
         players      = {},
         kills        = {},
     }

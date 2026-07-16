@@ -48,12 +48,13 @@ function mod.send_end_of_match()
 
     -- Private line: your stats. Print only.
     if mine then
+        local honor_text = match.honor_capped and "honor capped" or string.format("%d honor", match.honor_delta or 0)
         print(string.format(
-            "|cff00d606BgStat:|r You: %d kills / %d deaths / %s damage / %s healing / %d honor",
+            "|cff00d606BgStat:|r You: %d kills / %d deaths / %s damage / %s healing / %s",
             mine.kills or 0, mine.deaths or 0,
             format_number(mine.damage or 0),
             format_number(mine.healing or 0),
-            match.honor_delta or 0))
+            honor_text))
     end
 
     -- Aggregate team totals. Faction: 1 = Alliance, 0 = Horde.

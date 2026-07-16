@@ -7,7 +7,8 @@ local last_winner      = nil
 local current_zone     = nil
 local honor_listen_until = 0
 local saved_match_ref    = nil
-local report_pending     = false
+T.honor_currency_id = 1901   -- Honor, via C_CurrencyInfo (TBC globals are nil on Anniversary)
+T.honor_cap         = 75000  -- fallback if the API doesn't report maxQuantity
 
 -- Build patterns from Blizzard's localized format strings.
 -- Source: https://warcraft.wiki.gg/wiki/Parsing_event_messages
@@ -108,7 +109,27 @@ local function on_match_end()
     -- honor_match_total accumulated from CHAT_MSG_COMBAT_HONOR_GAIN messages
     -- during the BG. This captures every "+X honor" event including bonus,
     -- objective, and per-kill honor.
-    T.history.save_current(zone_to_save or "Unknown BG", honor_match_total)
+    -- If we banked nothing and sit at the cap, the 0 is the cap's fault,
+    -- not a tracking failure. Persist that so the UI can say so.
+    -- Banked honor is only readable via C_CurrencyInfo on Anniversary
+    -- (GetHonorCurrency/UnitHonor return nil -- verified in-game 2026-07).
+    -- Prefer the cap the API itself reports; fall back to the constant.
+    local honor_capped = false
+    if honor_match_total == 0 and C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
+        local info = C_CurrencyInfo.GetCurrencyInfo(T.honor_currency_id)
+        if info then
+            local cap = (info.maxQuantity and info.maxQuantity > 0)
+                and info.maxQuantity or T.honor_cap
+            honor_capped = (info.quantity or 0) >= cap
+        end
+    end
+
+    if honor_capped then
+        DEFAULT_CHAT_FRAME:AddMessage(
+            "|cff00d606BgStat:|r no honor banked this match -- you are at the honor cap")
+    end
+
+    T.history.save_current(zone_to_save or "Unknown BG", honor_match_total, honor_capped)
     saved_match_ref = BgStatDB.matches[#BgStatDB.matches]
 
     if T.spec_scanner then T.spec_scanner.stop() end
@@ -118,20 +139,12 @@ local function on_match_end()
     -- Listen 30s after match end for trailing credits (final win bonus,
     -- last-second HK honor that lands after the winner is announced).
     honor_listen_until = GetTime() + 30
-    report_pending     = true
 
-    -- Fallback: if no award message arrives within 8 seconds (e.g. a draw
-    -- where no team won the BG, or some edge case where the award message
-    -- gets swallowed), send the report anyway with whatever honor we have.
-    -- The normal path is the CHAT_MSG_COMBAT_HONOR_GAIN handler, which fires
-    -- the report immediately on the first "award" message after match end --
-    -- typically 1-3 seconds after the winner resolves.
-    C_Timer.After(8, function()
-        if report_pending then
-            report_pending = false
-            T.report.send_end_of_match()
-        end
-    end)
+    -- Winner detection and the final scoreboard land in the same event
+    -- burst (verified via timing log, 2026-07: trailing score refreshes
+    -- finished within 0.3s of winner). 1s is enough; do NOT gate the
+    -- report on honor messages -- capped players receive 0-value awards.
+    C_Timer.After(1, function() T.report.send_end_of_match() end)
 end
 
 frame:SetScript("OnEvent", function(self, event, ...)
@@ -183,7 +196,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
 
     elseif event == "CHAT_MSG_COMBAT_HONOR_GAIN" then
         local raw_msg = ...
-        local gained, kind = parse_honor_message(raw_msg)
+        local gained = parse_honor_message(raw_msg)
 
         if gained > 0 then
             if in_bg then
@@ -191,16 +204,6 @@ frame:SetScript("OnEvent", function(self, event, ...)
             elseif GetTime() < honor_listen_until and saved_match_ref then
                 saved_match_ref.honor_delta = (saved_match_ref.honor_delta or 0) + gained
                 T.ui.refresh_active()
-
-                -- The win bonus is an "award" message that lands 1-3 seconds
-                -- after match end. Fire the report immediately when we see it,
-                -- so chat audience is still in the BG.
-                if kind == "award" and report_pending then
-                    report_pending = false
-                    -- Tiny grace period for any second simultaneous award
-                    -- (e.g. quest credit + faction bonus), then send.
-                    C_Timer.After(0.5, function() T.report.send_end_of_match() end)
-                end
             end
         end
     end
