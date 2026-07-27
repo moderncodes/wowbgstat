@@ -16,6 +16,9 @@ local CONFIG_KEYS = {
     "spec_scan_enabled",
     "disable_error_speech",
     "max_history",
+    "nameplate_friendly",
+    "nameplate_enemy",
+    "rank_scope",
 }
 
 local function load_saved()
@@ -63,6 +66,40 @@ local options_table = {
             get = function() return get("disable_error_speech") end,
             set = function(_, v) set("disable_error_speech", v) end,
             order = 3,
+            width = "full",
+        },
+        nameplates_header = {
+            type = "header",
+            name = "Display stats",
+            order = 4,
+        },
+        nameplate_friendly = {
+            type = "toggle",
+            name = "Friendly nameplates",
+            desc = "Show rank values on your team's nameplates. Requires WoW's own friendly nameplates to be turned on.",
+            get = function() return get("nameplate_friendly") end,
+            set = function(_, v) set("nameplate_friendly", v) end,
+            order = 5,
+            width = "full",
+        },
+        nameplate_enemy = {
+            type = "toggle",
+            name = "Enemy nameplates",
+            desc = "Show rank values on enemy nameplates.",
+            get = function() return get("nameplate_enemy") end,
+            set = function(_, v) set("nameplate_enemy", v) end,
+            order = 6,
+            width = "full",
+        },
+        rank_scope = {
+            type = "select",
+            style = "radio",
+            name = "Rank scope",
+            desc = "Global ranks all players in the battleground together. Faction ranks each team separately.",
+            values = { global = "Global", faction = "Faction" },
+            get = function() return get("rank_scope") end,
+            set = function(_, v) set("rank_scope", v) end,
+            order = 7,
             width = "full",
         },
         limits_header = {
@@ -119,7 +156,7 @@ function mod.init()
     end
 
     AceConfig:RegisterOptionsTable("BgStat", options_table)
-    AceConfigDialog:AddToBlizOptions("BgStat", "BgStat")
+    mod._panel = AceConfigDialog:AddToBlizOptions("BgStat", "BgStat")
     mod._registered = true
 end
 
@@ -129,10 +166,10 @@ function mod.open()
             "|cff00d606BgStat:|r options panel requires Ace3. Install it via CurseForge.")
         return
     end
-    if Settings and Settings.OpenToCategory then
-        Settings.OpenToCategory("BgStat")
-    elseif InterfaceOptionsFrame_OpenToCategory then
-        InterfaceOptionsFrame_OpenToCategory("BgStat")
-        InterfaceOptionsFrame_OpenToCategory("BgStat")
-    end
+    -- AceConfigDialog:AddToBlizOptions returns a group table whose `name`
+    -- field holds the numeric category ID from Settings.RegisterCanvasLayoutCategory
+    -- (despite the field name). Settings.OpenToCategory requires that number --
+    -- passing the string "BgStat" throws a range error from C_SettingsUtil.
+    -- Verified on 2.5.6.68749: panel.name == 17, Settings.OpenToCategory(17) works.
+    Settings.OpenToCategory(mod._panel.name)
 end

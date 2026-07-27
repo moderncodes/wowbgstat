@@ -4,24 +4,9 @@ local mod = {}
 T.report = mod
 
 local last_chat_send = 0
-local image_frame
 
-T.on_killing_blow = function(victim_name, victim_class)
-    PlaySoundFile(T.kb_sound, "Master")
-
-    if not image_frame then
-        image_frame = CreateFrame("Frame", "BgStatKBOverlay", UIParent)
-        image_frame:SetSize(T.kb_image_size, T.kb_image_size)
-        image_frame:SetPoint(T.kb_image_point, UIParent, T.kb_image_point, T.kb_image_x, T.kb_image_y)
-        image_frame.tex = image_frame:CreateTexture(nil, "OVERLAY")
-        image_frame.tex:SetAllPoints()
-        image_frame:Hide()
-    end
-
-    local path = T.class_image[victim_class] or T.class_image.WARRIOR
-    image_frame.tex:SetTexture(path)
-    image_frame:Show()
-    C_Timer.After(3, function() image_frame:Hide() end)
+T.on_killing_blow = function()
+    PlaySoundFile(T.kb_sounds[math.random(#T.kb_sounds)], "Master")
 end
 
 local function format_number(n)

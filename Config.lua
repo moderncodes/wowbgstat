@@ -1,15 +1,14 @@
 local _, T = ...
 
-T.class_image = {
-    WARRIOR = "Interface\\AddOns\\BgStat\\Res\\MadBaby",
-    ROGUE   = "Interface\\AddOns\\BgStat\\Res\\Broseph",
-    HUNTER  = "Interface\\AddOns\\BgStat\\Res\\DerpFace",
-    MAGE    = "Interface\\AddOns\\BgStat\\Res\\MadBaby",
-    PRIEST  = "Interface\\AddOns\\BgStat\\Res\\MadBaby",
-    PALADIN = "Interface\\AddOns\\BgStat\\Res\\MadBaby",
-    SHAMAN  = "Interface\\AddOns\\BgStat\\Res\\MadBaby",
-    WARLOCK = "Interface\\AddOns\\BgStat\\Res\\MadBaby",
-    DRUID   = "Interface\\AddOns\\BgStat\\Res\\MadBaby",
+local res = "Interface\\AddOns\\BgStat\\Res\\"
+
+-- KB sounds. One picked at random per killing blow.
+T.kb_sounds = {
+    res.."AllClear.mp3",    res.."AufWiedersehen.mp3", res.."EnemyWeakened.MP3",
+    res.."Excellent.mp3",   res.."GoodGame.mp3",       res.."GreatShot.mp3",
+    res.."Halo.mp3",        res.."Hehhe.mp3",          res.."Jahahaha.mp3",
+    res.."JaWohl.mp3",      res.."JaWohl2.mp3",        res.."Nein.mp3",
+    res.."PathCleared.mp3", res.."Sorry.mp3",          res.."Wunderbar.mp3",
 }
 
 T.kb_sound = "Interface\\AddOns\\BgStat\\Res\\Hehhe.mp3"
@@ -38,3 +37,11 @@ T.spec_scan_enabled = true
 -- re-enables it. This affects ALL sources of error speech, not just inspect:
 -- your own out-of-range casts, follow attempts, trade attempts, etc.
 T.disable_error_speech = true
+
+-- Nameplate rank badges.
+T.nameplate_friendly = false   -- WoW's friendly nameplates are off by default
+T.nameplate_enemy    = true
+
+-- "global"  = rank every player in the BG together
+-- "faction" = rank each team separately
+T.rank_scope = "global"
