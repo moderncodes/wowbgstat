@@ -1,9 +1,31 @@
 # IntelliJ project files
 .idea/
 
-# Asset files - users supply their own per the README install instructions
-Res/
+# Claude local state
+.claude/
 
 # OS junk
 .DS_Store
-Thumbs.db.claude/
+Thumbs.db
+
+# Res assets: ignore everything, then whitelist only the files
+# the addon references (Config.lua sounds + README-listed images)
+Res/*
+!Res/AllClear.mp3
+!Res/AufWiedersehen.mp3
+!Res/EnemyWeakened.MP3
+!Res/Excellent.mp3
+!Res/GoodGame.mp3
+!Res/GreatShot.mp3
+!Res/Halo.mp3
+!Res/Hehhe.mp3
+!Res/Jahahaha.mp3
+!Res/JaWohl.mp3
+!Res/JaWohl2.mp3
+!Res/Nein.mp3
+!Res/PathCleared.mp3
+!Res/Sorry.mp3
+!Res/Wunderbar.mp3
+!Res/MadBaby.blp
+!Res/Broseph.blp
+!Res/DerpFace.blp
