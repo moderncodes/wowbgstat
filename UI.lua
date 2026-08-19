@@ -930,6 +930,183 @@ local function build_kills_tab(parent)
     return frame
 end
 
+-- ============================================================================
+-- Tab content: Trends (4 stacked line charts, you vs team average)
+-- ============================================================================
+
+local TREND_METRICS = {
+    { key = "kills",   avg = "avg_kills",   label = "Kills",   r = 1,    g = 1,    b = 0    },
+    { key = "deaths",  avg = "avg_deaths",  label = "Deaths",  r = 1,    g = 0,    b = 0    },
+    { key = "damage",  avg = "avg_damage",  label = "Damage",  r = 1,    g = 0.5,  b = 0    },
+    { key = "healing", avg = "avg_healing", label = "Healing", r = 0.25, g = 1,    b = 0.25 },
+}
+
+local function build_trends_tab(frame_parent)
+    local frame = CreateFrame("Frame", nil, frame_parent)
+    frame:SetAllPoints()
+
+    local header = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    header:SetPoint("TOPLEFT", 12, -10)
+    header:SetText("Trends — You vs Team Average")
+
+    local sub = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    sub:SetPoint("TOPLEFT", 12, -32)
+
+    local empty = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableLarge")
+    empty:SetPoint("CENTER", 0, 0)
+    empty:SetText("Need at least 2 saved matches on this character\nto draw trend lines.")
+    frame.empty = empty
+
+    -- Layout: 2x2 grid. Kills | Deaths on top, Damage | Healing below.
+    -- Each cell = y-label gutter + (12px title + plot).
+    local Y_LABEL_W  = 46
+    local TITLE_H    = 12
+    local PANEL_GAP  = 10
+    local cell_w     = math.floor((FRAME_W - 30 - PANEL_GAP) / 2)
+    local plot_w     = cell_w - Y_LABEL_W
+    local PLOT_H     = 150
+    local top_off    = -52
+
+    local panels = {}
+
+    for pi, metric in ipairs(TREND_METRICS) do
+        local panel = { metric = metric }
+        local row = math.floor((pi - 1) / 2)          -- 0 = top, 1 = bottom
+        local col = (pi - 1) % 2                       -- 0 = left, 1 = right
+        local x = 12 + col * (cell_w + PANEL_GAP) + Y_LABEL_W
+        local y = top_off - row * (TITLE_H + PLOT_H + PANEL_GAP)
+
+        local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        title:SetPoint("TOPLEFT", x, y)
+        title:SetText(metric.label)
+        title:SetTextColor(metric.r, metric.g, metric.b)
+
+        local plot = CreateFrame("Frame", nil, frame)
+        plot:SetSize(plot_w, PLOT_H)
+        plot:SetPoint("TOPLEFT", x, y - TITLE_H)
+        panel.plot = plot
+
+        local bg = plot:CreateTexture(nil, "BACKGROUND")
+        bg:SetAllPoints()
+        bg:SetColorTexture(1, 1, 1, 0.03)
+
+        -- Gridlines + y labels at 0 / 25 / 50 / 75 / 100%.
+        panel.grid_labels = {}
+        for gi = 0, 4 do
+            local frac = gi / 4
+            local gl = plot:CreateTexture(nil, "BORDER")
+            gl:SetColorTexture(0.4, 0.4, 0.4, gi == 0 and 0.8 or 0.25)
+            gl:SetSize(plot_w, 1)
+            gl:SetPoint("BOTTOMLEFT", 0, (PLOT_H - 1) * frac)
+            local fs = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            fs:SetPoint("RIGHT", plot, "BOTTOMLEFT", -4, (PLOT_H - 1) * frac)
+            fs:SetJustifyH("RIGHT")
+            panel.grid_labels[gi] = fs
+        end
+
+        panel.you_lines, panel.avg_lines, panel.hovers = {}, {}, {}
+        panels[pi] = panel
+    end
+
+    local function get_line(panel, pool, i, r, g, b, a)
+        local l = pool[i]
+        if not l then
+            l = panel.plot:CreateLine(nil, "ARTWORK")
+            l:SetThickness(0.7)
+            l:SetColorTexture(r, g, b, a)
+            pool[i] = l
+        end
+        return l
+    end
+
+    local function get_hover(panel, i)
+        local h = panel.hovers[i]
+        if not h then
+            h = CreateFrame("Frame", nil, panel.plot)
+            h:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            panel.hovers[i] = h
+        end
+        return h
+    end
+
+    local function draw_panel(panel, data)
+        local metric = panel.metric
+        local max_v = 1
+        for _, d in ipairs(data) do
+            if d[metric.key] > max_v then max_v = d[metric.key] end
+            if d[metric.avg] > max_v then max_v = d[metric.avg] end
+        end
+        for gi = 0, 4 do
+            panel.grid_labels[gi]:SetText(fmt(max_v * gi / 4))
+        end
+
+        local n = #data
+        local spacing = plot_w / (n - 1)
+        local function px(i) return (i - 1) * spacing end
+        local function py(v) return (v / max_v) * (PLOT_H - 1) end
+
+        for i = 1, n - 1 do
+            local a, b = data[i], data[i + 1]
+            local l1 = get_line(panel, panel.you_lines, i, metric.r, metric.g, metric.b, 0.95)
+            l1:SetStartPoint("BOTTOMLEFT", panel.plot, px(i),     py(a[metric.key]))
+            l1:SetEndPoint("BOTTOMLEFT",   panel.plot, px(i + 1), py(b[metric.key]))
+            l1:Show()
+            local l2 = get_line(panel, panel.avg_lines, i, 0.6, 0.6, 0.6, 0.9)
+            l2:SetStartPoint("BOTTOMLEFT", panel.plot, px(i),     py(a[metric.avg]))
+            l2:SetEndPoint("BOTTOMLEFT",   panel.plot, px(i + 1), py(b[metric.avg]))
+            l2:Show()
+        end
+        for i = n, #panel.you_lines do panel.you_lines[i]:Hide() end
+        for i = n, #panel.avg_lines do panel.avg_lines[i]:Hide() end
+
+        for i = 1, n do
+            local d = data[i]
+            local h = get_hover(panel, i)
+            h:SetSize(math.max(spacing, 8), PLOT_H)
+            h:ClearAllPoints()
+            h:SetPoint("BOTTOMLEFT", px(i) - spacing / 2, 0)
+            h:SetScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
+                local result = d.win == nil and "|cffaaaaaaINCOMPLETE|r"
+                    or (d.win and "|cff00ff00WIN|r" or "|cffff0000LOSS|r")
+                GameTooltip:SetText(string.format("%s — %s",
+                    bg_short_name(d.zone), result), 1, 1, 1)
+                GameTooltip:AddLine(format_time(d.at), 0.8, 0.8, 0.8)
+                GameTooltip:AddDoubleLine("Your " .. metric.label:lower() .. ":",
+                    fmt(d[metric.key]), metric.r, metric.g, metric.b, 1, 1, 1)
+                GameTooltip:AddDoubleLine("Team avg:",
+                    fmt(d[metric.avg]), 0.6, 0.6, 0.6, 1, 1, 1)
+                GameTooltip:Show()
+            end)
+            h:Show()
+        end
+        for i = n + 1, #panel.hovers do panel.hovers[i]:Hide() end
+    end
+
+    local function draw()
+        local data = T.history.trend_series(T.max_history)
+        sub:SetText(string.format(
+            "Colored — you   |cff999999— team avg|r   (up to %d matches, oldest to newest; hover for details)",
+            T.max_history))
+        if #data < 2 then
+            empty:Show()
+            for _, panel in ipairs(panels) do panel.plot:Hide() end
+            return
+        end
+        empty:Hide()
+        for _, panel in ipairs(panels) do
+            panel.plot:Show()
+            draw_panel(panel, data)
+        end
+    end
+
+    function frame:Refresh()
+        draw()
+    end
+
+    return frame
+end
+
 local function show_tab(idx)
     active_tab = idx
     for i, tab in ipairs(tabs) do
@@ -986,9 +1163,10 @@ local function build_main_frame()
     content_frames[3] = build_classes_tab(content_parent)
     content_frames[4] = build_specs_tab(content_parent)
     content_frames[5] = build_kills_tab(content_parent)
+    content_frames[6] = build_trends_tab(content_parent)
 
     -- Build tabs at the bottom of the main frame
-    local tab_names = { "Last Match", "History", "Classes", "Specs", "Kills" }
+    local tab_names = { "Last Match", "History", "Classes", "Specs", "Kills", "Trends" }
     for i, name in ipairs(tab_names) do
         local tab = CreateFrame("Button", "BgStatTab" .. i, f, "CharacterFrameTabButtonTemplate")
         tab:SetID(i)
@@ -1002,7 +1180,7 @@ local function build_main_frame()
         PanelTemplates_TabResize(tab, 0)
         tabs[i] = tab
     end
-    PanelTemplates_SetNumTabs(f, 5)
+    PanelTemplates_SetNumTabs(f, 6)
 
     main_frame = f
     show_tab(1)

@@ -263,3 +263,46 @@ function mod.recent_kills(limit)
     end
     return out
 end
+
+function mod.trend_series(limit)
+    -- Last `limit` matches for the current character, oldest -> newest.
+    -- Each point: your kills/deaths/damage/healing + your team's per-player
+    -- average of the same, from the saved snapshot (fully retroactive).
+    local me = UnitName("player")
+    local out = {}
+    for mi = #BgStatDB.matches, 1, -1 do
+        local m = BgStatDB.matches[mi]
+        local mine = m.players[me]
+        local is_mine = (m.character == me)
+            or (m.character == nil and mine ~= nil)
+        if is_mine and mine and mine.faction ~= nil then
+            local n, tk, td, tdmg, theal = 0, 0, 0, 0, 0
+            for _, p in pairs(m.players) do
+                if p.faction == mine.faction then
+                    n    = n + 1
+                    tk   = tk   + (p.kills   or 0)
+                    td   = td   + (p.deaths  or 0)
+                    tdmg = tdmg + (p.damage  or 0)
+                    theal= theal+ (p.healing or 0)
+                end
+            end
+            if n > 0 then
+                table.insert(out, 1, {
+                    at          = m.timestamp,
+                    zone        = m.zone,
+                    win         = (m.winner ~= nil) and (mine.faction == m.winner) or nil,
+                    kills       = mine.kills   or 0,
+                    deaths      = mine.deaths  or 0,
+                    damage      = mine.damage  or 0,
+                    healing     = mine.healing or 0,
+                    avg_kills   = tk    / n,
+                    avg_deaths  = td    / n,
+                    avg_damage  = tdmg  / n,
+                    avg_healing = theal / n,
+                })
+                if #out >= limit then break end
+            end
+        end
+    end
+    return out
+end

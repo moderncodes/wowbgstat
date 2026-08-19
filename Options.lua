@@ -115,7 +115,10 @@ local options_table = {
             max = 500,
             step = 50,
             get = function() return get("max_history") end,
-            set = function(_, v) set("max_history", v) end,
+            set = function(_, v)
+                set("max_history", v)
+                if T.ui and T.ui.refresh_active then T.ui.refresh_active() end
+            end,
             order = 11,
             width = "full",
         },
