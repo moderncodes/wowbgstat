@@ -957,55 +957,102 @@ local function build_trends_tab(frame_parent)
     empty:SetText("Need at least 2 saved matches on this character\nto draw trend lines.")
     frame.empty = empty
 
-    -- Layout: 2x2 grid. Kills | Deaths on top, Damage | Healing below.
-    -- Each cell = y-label gutter + (12px title + plot).
+    -- Layout: 2x2 grid (Kills | Deaths / Damage | Healing). Clicking a
+    -- chart expands it over the full plot area; clicking again restores.
     local Y_LABEL_W  = 46
     local TITLE_H    = 12
     local PANEL_GAP  = 10
     local cell_w     = math.floor((FRAME_W - 30 - PANEL_GAP) / 2)
-    local plot_w     = cell_w - Y_LABEL_W
-    local PLOT_H     = 150
+    local grid_w     = cell_w - Y_LABEL_W
+    local GRID_H     = 150
     local top_off    = -52
+    local full_w     = FRAME_W - 30 - Y_LABEL_W
+    local full_h     = 2 * GRID_H + PANEL_GAP + TITLE_H
 
-    local panels = {}
+    local panels   = {}
+    local expanded = nil   -- panel currently maximized, or nil
 
     for pi, metric in ipairs(TREND_METRICS) do
-        local panel = { metric = metric }
-        local row = math.floor((pi - 1) / 2)          -- 0 = top, 1 = bottom
-        local col = (pi - 1) % 2                       -- 0 = left, 1 = right
-        local x = 12 + col * (cell_w + PANEL_GAP) + Y_LABEL_W
-        local y = top_off - row * (TITLE_H + PLOT_H + PANEL_GAP)
+        local panel = { metric = metric, row = math.floor((pi - 1) / 2), col = (pi - 1) % 2 }
 
-        local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        title:SetPoint("TOPLEFT", x, y)
-        title:SetText(metric.label)
-        title:SetTextColor(metric.r, metric.g, metric.b)
+        panel.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        panel.title:SetText(metric.label)
+        panel.title:SetTextColor(metric.r, metric.g, metric.b)
 
-        local plot = CreateFrame("Frame", nil, frame)
-        plot:SetSize(plot_w, PLOT_H)
-        plot:SetPoint("TOPLEFT", x, y - TITLE_H)
-        panel.plot = plot
+        panel.plot = CreateFrame("Frame", nil, frame)
 
-        local bg = plot:CreateTexture(nil, "BACKGROUND")
+        local bg = panel.plot:CreateTexture(nil, "BACKGROUND")
         bg:SetAllPoints()
         bg:SetColorTexture(1, 1, 1, 0.03)
 
-        -- Gridlines + y labels at 0 / 25 / 50 / 75 / 100%.
-        panel.grid_labels = {}
+        panel.grid_lines, panel.grid_labels = {}, {}
         for gi = 0, 4 do
-            local frac = gi / 4
-            local gl = plot:CreateTexture(nil, "BORDER")
+            local gl = panel.plot:CreateTexture(nil, "BORDER")
             gl:SetColorTexture(0.4, 0.4, 0.4, gi == 0 and 0.8 or 0.25)
-            gl:SetSize(plot_w, 1)
-            gl:SetPoint("BOTTOMLEFT", 0, (PLOT_H - 1) * frac)
+            panel.grid_lines[gi] = gl
             local fs = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-            fs:SetPoint("RIGHT", plot, "BOTTOMLEFT", -4, (PLOT_H - 1) * frac)
             fs:SetJustifyH("RIGHT")
             panel.grid_labels[gi] = fs
         end
 
         panel.you_lines, panel.avg_lines, panel.hovers = {}, {}, {}
         panels[pi] = panel
+    end
+
+    -- Position one panel's title, plot, gridlines, and labels for a given
+    -- geometry. Called for both grid cells and the expanded layout.
+    local function layout_panel(panel, x, y, w, h)
+        panel.w, panel.h = w, h
+        panel.title:ClearAllPoints()
+        panel.title:SetPoint("TOPLEFT", x, y)
+        panel.plot:SetSize(w, h)
+        panel.plot:ClearAllPoints()
+        panel.plot:SetPoint("TOPLEFT", x, y - TITLE_H)
+        for gi = 0, 4 do
+            local frac = gi / 4
+            panel.grid_lines[gi]:SetSize(w, 1)
+            panel.grid_lines[gi]:ClearAllPoints()
+            panel.grid_lines[gi]:SetPoint("BOTTOMLEFT", 0, (h - 1) * frac)
+            panel.grid_labels[gi]:ClearAllPoints()
+            panel.grid_labels[gi]:SetPoint("RIGHT", panel.plot, "BOTTOMLEFT", -4, (h - 1) * frac)
+        end
+    end
+
+    local function set_panel_shown(panel, shown)
+        if shown then panel.title:Show(); panel.plot:Show()
+        else panel.title:Hide(); panel.plot:Hide() end
+        for gi = 0, 4 do
+            if shown then panel.grid_labels[gi]:Show()
+            else panel.grid_labels[gi]:Hide() end
+        end
+    end
+
+    local draw   -- forward declaration; toggle needs it
+
+    local function apply_layout()
+        if expanded then
+            for _, panel in ipairs(panels) do
+                set_panel_shown(panel, panel == expanded)
+            end
+            layout_panel(expanded, 12 + Y_LABEL_W, top_off, full_w, full_h)
+        else
+            for _, panel in ipairs(panels) do
+                set_panel_shown(panel, true)
+                local x = 12 + panel.col * (cell_w + PANEL_GAP) + Y_LABEL_W
+                local y = top_off - panel.row * (TITLE_H + GRID_H + PANEL_GAP)
+                layout_panel(panel, x, y, grid_w, GRID_H)
+            end
+        end
+        draw()
+    end
+
+    local function toggle_expand(panel)
+        if expanded == panel then
+            expanded = nil
+        else
+            expanded = panel
+        end
+        apply_layout()
     end
 
     local function get_line(panel, pool, i, r, g, b, a)
@@ -1023,7 +1070,9 @@ local function build_trends_tab(frame_parent)
         local h = panel.hovers[i]
         if not h then
             h = CreateFrame("Frame", nil, panel.plot)
+            h:EnableMouse(true)
             h:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            h:SetScript("OnMouseDown", function() toggle_expand(panel) end)
             panel.hovers[i] = h
         end
         return h
@@ -1041,13 +1090,13 @@ local function build_trends_tab(frame_parent)
         end
 
         local n = #data
-        local spacing = plot_w / (n - 1)
+        local spacing = panel.w / (n - 1)
         local function px(i) return (i - 1) * spacing end
-        local function py(v) return (v / max_v) * (PLOT_H - 1) end
+        local function py(v) return (v / max_v) * (panel.h - 1) end
 
         for i = 1, n - 1 do
             local a, b = data[i], data[i + 1]
-            local l1 = get_line(panel, panel.you_lines, i, metric.r, metric.g, metric.b, 0.95)
+                        local l1 = get_line(panel, panel.you_lines, i, metric.r, metric.g, metric.b, 0.7)
             l1:SetStartPoint("BOTTOMLEFT", panel.plot, px(i),     py(a[metric.key]))
             l1:SetEndPoint("BOTTOMLEFT",   panel.plot, px(i + 1), py(b[metric.key]))
             l1:Show()
@@ -1062,7 +1111,7 @@ local function build_trends_tab(frame_parent)
         for i = 1, n do
             local d = data[i]
             local h = get_hover(panel, i)
-            h:SetSize(math.max(spacing, 8), PLOT_H)
+            h:SetSize(math.max(spacing, 8), panel.h)
             h:ClearAllPoints()
             h:SetPoint("BOTTOMLEFT", px(i) - spacing / 2, 0)
             h:SetScript("OnEnter", function(self)
@@ -1083,25 +1132,26 @@ local function build_trends_tab(frame_parent)
         for i = n + 1, #panel.hovers do panel.hovers[i]:Hide() end
     end
 
-    local function draw()
+    draw = function()
         local data = T.history.trend_series(T.max_history)
         sub:SetText(string.format(
-            "Colored — you   |cff999999— team avg|r   (up to %d matches, oldest to newest; hover for details)",
+            "Colored — you   |cff999999— team avg|r   (up to %d matches; click a chart to expand)",
             T.max_history))
         if #data < 2 then
             empty:Show()
-            for _, panel in ipairs(panels) do panel.plot:Hide() end
+            for _, panel in ipairs(panels) do set_panel_shown(panel, false) end
             return
         end
         empty:Hide()
         for _, panel in ipairs(panels) do
-            panel.plot:Show()
-            draw_panel(panel, data)
+            if not expanded or panel == expanded then
+                draw_panel(panel, data)
+            end
         end
     end
 
     function frame:Refresh()
-        draw()
+        apply_layout()
     end
 
     return frame

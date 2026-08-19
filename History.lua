@@ -287,10 +287,12 @@ function mod.trend_series(limit)
                 end
             end
             if n > 0 then
+                local win
+                if m.winner ~= nil then win = (mine.faction == m.winner) end
                 table.insert(out, 1, {
                     at          = m.timestamp,
                     zone        = m.zone,
-                    win         = (m.winner ~= nil) and (mine.faction == m.winner) or nil,
+                    win         = win,
                     kills       = mine.kills   or 0,
                     deaths      = mine.deaths  or 0,
                     damage      = mine.damage  or 0,
