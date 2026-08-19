@@ -10,6 +10,7 @@ end
 
 function mod.save_current(zone, honor_delta, honor_capped)
     local snapshot = {
+        character    = UnitName("player"),
         zone         = zone,
         timestamp    = time(),
         winner       = GetBattlefieldWinner(),
@@ -37,9 +38,12 @@ function mod.save_current(zone, honor_delta, honor_capped)
     for _, k in ipairs(T.combat_log.get_kill_log()) do
         table.insert(snapshot.kills, {
             victim       = k.victim,
+            victim_full  = k.victim_full,
             victim_class = k.victim_class,
             spell_id     = k.spell_id,
             spell_name   = k.spell_name,
+            damage       = k.damage,
+            at           = k.at,
         })
     end
 
@@ -228,4 +232,34 @@ function mod.lifetime_spec_stats()
         end
     end
     return out, matches_with_specs, you
+end
+
+function mod.recent_kills(limit)
+    -- Newest first, across matches. Kills within a match are chronological,
+    -- so walk matches newest->oldest and each match's kills back-to-front.
+    local me = UnitName("player")
+    local out = {}
+    for mi = #BgStatDB.matches, 1, -1 do
+        local m = BgStatDB.matches[mi]
+        -- Only this character's matches. Old snapshots lack `character`;
+        -- fall back to presence in the match's player list (same assumption
+        -- summary_by_zone uses -- your own alts can't share a BG).
+        local is_mine = (m.character == me)
+            or (m.character == nil and m.players[me] ~= nil)
+        if is_mine then
+        for ki = #(m.kills or {}), 1, -1 do
+            local k = m.kills[ki]
+            table.insert(out, {
+                victim       = k.victim_full or k.victim,
+                victim_class = k.victim_class,
+                spell_name   = k.spell_name,
+                damage       = k.damage,
+                at           = k.at or m.timestamp,  -- old kills: match time
+                zone         = m.zone,
+            })
+            if #out >= limit then return out end
+        end
+        end
+    end
+    return out
 end

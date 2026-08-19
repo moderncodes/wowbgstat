@@ -1,6 +1,6 @@
 ## Interface: 20506
 ## Title: BgStat
-## Notes: Battleground stats, KB tracking, post-match window (TBC Anniversary 2.5.5)
+## Notes: Battleground stats, KB tracking, post-match window (TBC Anniversary 2.5.6)
 ## Author: TBC Anniversary port
 ## Version: 2.0.0
 ## SavedVariables: BgStatDB

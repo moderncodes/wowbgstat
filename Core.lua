@@ -239,7 +239,7 @@ SlashCmdList.BGSTAT = function(msg)
     if msg == "" then
         T.ui.toggle()
     elseif msg == "help" then
-        DEFAULT_CHAT_FRAME:AddMessage("BgStat: /bgstat (toggle window) | /bgstat last | /bgstat history | /bgstat classes | /bgstat specs | /bgstat send | /bgstat config | /bgstat clear")
+        DEFAULT_CHAT_FRAME:AddMessage("BgStat: /bgstat (toggle window) | /bgstat last | /bgstat history | /bgstat classes | /bgstat specs | /bgstat kills | /bgstat send | /bgstat config | /bgstat clear")
     elseif msg == "last" or msg == "report" then
         T.ui.show(1)
     elseif msg == "history" then
@@ -248,6 +248,8 @@ SlashCmdList.BGSTAT = function(msg)
         T.ui.show(3)
     elseif msg == "specs" then
         T.ui.show(4)
+    elseif msg == "kills" then
+        T.ui.show(5)
     elseif msg == "config" or msg == "options" then
         T.options.open()
     elseif msg == "send" then

@@ -2,7 +2,7 @@
 
 Battleground stats, killing-blow tracking, and a four-tab post-match window.
 
-Built for **TBC Anniversary**, build 2.5.5.67157 (Interface `20505`).
+Built for **TBC Anniversary**, patch 2.5.6 (Interface `20506`).
 
 ## Installation
 

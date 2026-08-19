@@ -863,6 +863,73 @@ local function build_specs_tab(parent)
     return frame
 end
 
+-- ============================================================================
+-- Tab content: Kills (your last 100 killing blows)
+-- ============================================================================
+
+local kills_table
+
+local function build_kills_tab(parent)
+    local frame = CreateFrame("Frame", nil, parent)
+    frame:SetAllPoints()
+
+    local header = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    header:SetPoint("TOPLEFT", 12, -10)
+    header:SetText("Your Killing Blows")
+
+    local sub = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    sub:SetPoint("TOPLEFT", 12, -32)
+    sub:SetText("Last 500 killing blows across saved matches. Older kills may lack damage/realm data.")
+
+    local empty = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableLarge")
+    empty:SetPoint("CENTER", 0, 0)
+    empty:SetText("No killing blows recorded yet.")
+    frame.empty = empty
+
+    local columns = {
+        { key = "_idx",         label = "#",       width = 28,  align = "CENTER",
+          tooltip = "Row position under the current sort. Re-numbers whenever you change the sort column or direction." },
+        { key = "victim",       label = "Victim",  width = 160,
+          tooltip = "Who you killed, including realm for cross-realm players. Kills saved before this feature show the short name only.",
+          cell = function(v, row) return colored(row.victim_class, v or "?") end },
+        { key = "victim_class", label = "Class",   width = 80,
+          tooltip = "The victim's class, if the scoreboard had been read before the kill landed.",
+          cell = function(c) return colored(c, c or "?") end },
+        { key = "damage",       label = "Damage",  width = 80,  align = "CENTER",
+          tooltip = "Damage of the hit that killed them (the killing blow itself, not your total damage on that target). Kills saved before this feature show a dash.",
+          cell = function(v) return v and fmt(v) or "—" end },
+        { key = "spell_name",   label = "Killed With", width = 160,
+          tooltip = "The spell or melee swing that landed the killing blow." },
+        { key = "zone",         label = "BG",      width = 60,  align = "CENTER",
+          tooltip = "Which battleground the kill happened in.",
+          cell = function(v) return bg_short_name(v) end },
+        { key = "at",           label = "When",    width = 110, align = "CENTER",
+          tooltip = "Date and time of the kill. Kills saved before this feature fall back to the match's end time.",
+          cell = function(v) return format_time(v) end },
+    }
+
+    local function get_rows()
+        return T.history.recent_kills(500)
+    end
+
+    kills_table = build_table(frame, 12, -56, FRAME_W - 30, FRAME_H - 110,
+        columns, get_rows, { key = "at", dir = "desc" })
+
+    function frame:Refresh()
+        local rows = T.history.recent_kills(1)
+        if #rows == 0 then
+            empty:Show()
+            kills_table.container:Hide()
+            return
+        end
+        empty:Hide()
+        kills_table.container:Show()
+        kills_table.Refresh()
+    end
+
+    return frame
+end
+
 local function show_tab(idx)
     active_tab = idx
     for i, tab in ipairs(tabs) do
@@ -918,9 +985,10 @@ local function build_main_frame()
     content_frames[2] = build_history_tab(content_parent)
     content_frames[3] = build_classes_tab(content_parent)
     content_frames[4] = build_specs_tab(content_parent)
+    content_frames[5] = build_kills_tab(content_parent)
 
     -- Build tabs at the bottom of the main frame
-    local tab_names = { "Last Match", "History", "Classes", "Specs" }
+    local tab_names = { "Last Match", "History", "Classes", "Specs", "Kills" }
     for i, name in ipairs(tab_names) do
         local tab = CreateFrame("Button", "BgStatTab" .. i, f, "CharacterFrameTabButtonTemplate")
         tab:SetID(i)
@@ -934,7 +1002,7 @@ local function build_main_frame()
         PanelTemplates_TabResize(tab, 0)
         tabs[i] = tab
     end
-    PanelTemplates_SetNumTabs(f, 4)
+    PanelTemplates_SetNumTabs(f, 5)
 
     main_frame = f
     show_tab(1)
