@@ -20,7 +20,8 @@ local function fmt(n)
     n = n or 0
     if n >= 1e6 then return string.format("%.1fM", n / 1e6)
     elseif n >= 1e3 then return string.format("%.1fk", n / 1e3)
-    else return tostring(n) end
+    elseif n % 1 == 0 then return tostring(n)
+    else return string.format("%.1f", n) end
 end
 
 local function class_color_hex(token)
@@ -139,6 +140,9 @@ local function build_table(parent, x, y, w, h, columns, get_rows, default_sort)
             else return av < bv end
         end)
 
+        -- Position after sort, for tabs that render a "#" column.
+        for i, r in ipairs(rows) do r._idx = i end
+
         -- Rebuild header labels with sort indicator
         for ci, col in ipairs(columns) do
             local btn = header_buttons[ci]
@@ -207,6 +211,15 @@ local function build_table(parent, x, y, w, h, columns, get_rows, default_sort)
             sep:SetColorTexture(0.3, 0.3, 0.3, 0.6)
         end
 
+        if col.tooltip then
+            btn:SetScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_TOP")
+                GameTooltip:SetText(col.label, 1, 1, 1)
+                GameTooltip:AddLine(col.tooltip, nil, nil, nil, true)
+                GameTooltip:Show()
+            end)
+            btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        end
         btn:SetScript("OnClick", function()
             if sort_state.key == col.key then
                 sort_state.dir = (sort_state.dir == "desc") and "asc" or "desc"
@@ -459,17 +472,27 @@ local function build_last_match_tab(parent)
     btn_horde:ClearAllPoints();    btn_horde:SetPoint("LEFT", btn_alliance, "RIGHT", 4, 0)
 
     local columns = {
-        { key = "name",    label = "Name",     width = 130 },
+        { key = "_idx",    label = "#",        width = 28,  align = "CENTER",
+          tooltip = "Row position under the current sort. Re-numbers whenever you change the sort column or direction." },
+        { key = "name",    label = "Name",     width = 130,
+          tooltip = "Player name (realm stripped). Gold row = you. Blue rows = Alliance, red rows = Horde." },
         { key = "class",   label = "Class",    width = 80,
+          tooltip = "Class from the BG scoreboard, shown in its class color.",
           cell = function(c) return colored(c, c or "?") end },
-        { key = "kills",   label = "K",        width = 40,  align = "CENTER" },
-        { key = "deaths",  label = "D",        width = 40,  align = "CENTER" },
-        { key = "hks",     label = "HKs",      width = 50,  align = "CENTER" },
+        { key = "kills",   label = "K",        width = 40,  align = "CENTER",
+          tooltip = "Killing blows this match, from the BG scoreboard." },
+        { key = "deaths",  label = "D",        width = 40,  align = "CENTER",
+          tooltip = "Deaths this match, from the BG scoreboard." },
+        { key = "hks",     label = "HKs",      width = 50,  align = "CENTER",
+          tooltip = "Honorable kills: enemy deaths this player or their nearby group was credited for. Always much higher than killing blows." },
         { key = "damage",  label = "Damage",   width = 90,  align = "CENTER",
+          tooltip = "Total damage done this match, from the BG scoreboard.",
           cell = function(v) return fmt(v) end },
         { key = "healing", label = "Healing",  width = 90,  align = "CENTER",
+          tooltip = "Total healing done this match, from the BG scoreboard.",
           cell = function(v) return fmt(v) end },
-        { key = "honor",   label = "Honor",    width = 70,  align = "CENTER" },
+        { key = "honor",   label = "Honor",    width = 70,  align = "CENTER",
+          tooltip = "Bonus honor from the BG scoreboard (objectives and win bonus). Does NOT include per-kill honor — your true total for the match is the honor line above the table, parsed from chat." },
     }
 
     local function get_rows()
@@ -571,19 +594,28 @@ local function build_history_tab(parent)
     frame.totals_text = totals_text
 
     local columns = {
-        { key = "zone",       label = "Battleground", width = 160 },
-        { key = "games",      label = "Games", width = 60,  align = "CENTER" },
-        { key = "wins",       label = "W",     width = 40,  align = "CENTER" },
-        { key = "losses",     label = "L",     width = 40,  align = "CENTER" },
-        { key = "incomplete", label = "Inc",   width = 40,  align = "CENTER" },
+        { key = "zone",       label = "Battleground", width = 160,
+          tooltip = "Battleground zone. One row per BG type across your saved history." },
+        { key = "games",      label = "Games", width = 60,  align = "CENTER",
+          tooltip = "Total saved matches in this battleground." },
+        { key = "wins",       label = "W",     width = 40,  align = "CENTER",
+          tooltip = "Matches where your faction won." },
+        { key = "losses",     label = "L",     width = 40,  align = "CENTER",
+          tooltip = "Matches where the enemy faction won." },
+        { key = "incomplete", label = "Inc",   width = 40,  align = "CENTER",
+          tooltip = "Matches with no recorded winner — you left or zoned out before the game resolved. Excluded from Win%." },
         { key = "win_pct",    label = "Win%",  width = 60,  align = "CENTER",
+          tooltip = "Wins / (wins + losses). Incomplete matches don't count.",
           cell = function(v)
               if not v or v < 0 then return "—" end
               return string.format("%.0f%%", v)
           end },
-        { key = "kills",      label = "Kills",  width = 70,  align = "CENTER" },
-        { key = "deaths",     label = "Deaths", width = 70,  align = "CENTER" },
+        { key = "kills",      label = "Kills",  width = 70,  align = "CENTER",
+          tooltip = "Your total killing blows across all saved matches in this BG." },
+        { key = "deaths",     label = "Deaths", width = 70,  align = "CENTER",
+          tooltip = "Your total deaths across all saved matches in this BG." },
         { key = "honor",      label = "Honor",  width = 90,  align = "CENTER",
+          tooltip = "Your total honor earned in this BG, parsed from chat messages (includes per-kill, objective, and win-bonus honor).",
           cell = function(v) return fmt(v) end },
     }
 
@@ -641,22 +673,36 @@ local function build_classes_tab(parent)
     sub:SetText("Aggregated from every saved match (both factions). Click a column to sort.")
 
     local columns = {
-        { key = "class",        label = "Class",    width = 90,
+        { key = "class",        label = "Class",    width = 80,
+          tooltip = "Class, aggregated across every player of that class you've ever seen (both factions, all saved matches). You are excluded from this tab.",
           cell = function(c) return colored(c, c or "?") end },
-        { key = "appearances",  label = "Seen",     width = 60, align = "CENTER" },
-        { key = "avg_damage",   label = "Avg Dmg",  width = 80, align = "CENTER",
+        { key = "appearances",  label = "Seen",     width = 50, align = "CENTER",
+          tooltip = "Total appearances: each player of this class in each match counts once. The same person across 5 matches counts 5 times." },
+        { key = "avg_damage",   label = "Dmg/P",    width = 75, align = "CENTER",
+          tooltip = "Damage per participant: each appearance's damage divided by that match's player count, averaged across appearances. Normalizes 10-man WSG vs 40-man AV.",
           cell = function(v) return fmt(v) end },
-        { key = "avg_healing",  label = "Avg Heal", width = 80, align = "CENTER",
+        { key = "avg_healing",  label = "Heal/P",   width = 75, align = "CENTER",
+          tooltip = "Healing per participant: each appearance's healing divided by that match's player count, averaged across appearances.",
           cell = function(v) return fmt(v) end },
-        { key = "kills",        label = "Total K",  width = 70, align = "CENTER" },
-        { key = "deaths",       label = "Total D",  width = 70, align = "CENTER" },
-        { key = "kd_ratio",     label = "K/D",      width = 60, align = "CENTER",
+        { key = "dmg_index",    label = "D-Idx",    width = 55, align = "CENTER",
+          tooltip = "Damage index: damage vs the average player of the same match (damage / (match total / players)). 1.00 = exactly average, 2.00 = double. Comparable across BG sizes and durations.",
           cell = function(v) return string.format("%.2f", v or 0) end },
-        { key = "best_player",  label = "Best Damage Dealer", width = 200,
+        { key = "heal_index",   label = "H-Idx",    width = 55, align = "CENTER",
+          tooltip = "Healing index: healing vs the average player of the same match. 1.00 = match average.",
+          cell = function(v) return string.format("%.2f", v or 0) end },
+        { key = "kills",        label = "Total K",  width = 60, align = "CENTER",
+          tooltip = "Total killing blows by this class across all appearances." },
+        { key = "deaths",       label = "Total D",  width = 60, align = "CENTER",
+          tooltip = "Total deaths by this class across all appearances." },
+        { key = "kd_ratio",     label = "K/D",      width = 50, align = "CENTER",
+          tooltip = "Total kills / total deaths (deaths floored at 1 to avoid division by zero).",
+          cell = function(v) return string.format("%.2f", v or 0) end },
+        { key = "best_value",   label = "Best (Index)", width = 165,
+          tooltip = "Highest single-match damage index ever recorded for this class, and who did it. Sorts by the index value.",
           cell = function(_, row)
               if not row.best_player then return "—" end
-              return string.format("%s (%s)",
-                  colored(row.class, row.best_player), fmt(row.best_value or 0))
+              return string.format("%s (%.2fx)",
+                  colored(row.class, row.best_player), row.best_value or 0)
           end },
     }
 
@@ -670,10 +716,12 @@ local function build_classes_tab(parent)
                 kills       = r.kills,
                 deaths      = r.deaths,
                 kd_ratio    = (r.kills or 0) / math.max(r.deaths or 0, 1),
-                avg_damage  = r.appearances > 0 and (r.damage  / r.appearances) or 0,
-                avg_healing = r.appearances > 0 and (r.healing / r.appearances) or 0,
-                best_player = r.best_damage and r.best_damage.name or nil,
-                best_value  = r.best_damage and r.best_damage.value or 0,
+                avg_damage  = r.appearances > 0 and (r.dmg_per_head  / r.appearances) or 0,
+                avg_healing = r.appearances > 0 and (r.heal_per_head / r.appearances) or 0,
+                dmg_index   = r.dmg_index_n  > 0 and (r.dmg_index_sum  / r.dmg_index_n)  or 0,
+                heal_index  = r.heal_index_n > 0 and (r.heal_index_sum / r.heal_index_n) or 0,
+                best_player = r.best_index.name,
+                best_value  = r.best_index.value,
             })
         end
         return rows
@@ -714,21 +762,36 @@ local function build_specs_tab(parent)
 
     -- Widths total 720 (table width is FRAME_W - 30 = 730, leaving 10px slack).
     local columns = {
+        { key = "_idx",         label = "#",        width = 28,  align = "CENTER",
+          tooltip = "Row position under the current sort. Re-numbers whenever you change the sort column or direction." },
         { key = "label",        label = "Spec + Class", width = 170,
+          tooltip = "Dominant talent tree detected by the auto-scanner (friendly faction only, must have been within ~28 yards during a BG). Gold rows marked (YOU) are your own characters, tracked separately from the population.",
           cell = function(_, row)
               local spec = T.spec_scanner.spec_name(row.class, row.spec_tab) or "?"
               local base = string.format("%s %s", spec, colored(row.class, row.class or "?"))
               if row._is_self then base = base .. " (YOU)" end
               return base
           end },
-        { key = "appearances",  label = "Seen",      width = 60,  align = "CENTER" },
-        { key = "avg_damage",   label = "Avg Dmg",   width = 95,  align = "CENTER",
+        { key = "appearances",  label = "Seen",     width = 50, align = "CENTER",
+          tooltip = "Total appearances of this class+spec: each scanned player in each match counts once." },
+        { key = "avg_damage",   label = "Dmg/P",    width = 80, align = "CENTER",
+          tooltip = "Damage per participant: each appearance's damage divided by that match's player count, averaged across appearances. Normalizes 10-man WSG vs 40-man AV.",
           cell = function(v) return fmt(v) end },
-        { key = "avg_healing",  label = "Avg Heal",  width = 95,  align = "CENTER",
+        { key = "avg_healing",  label = "Heal/P",   width = 80, align = "CENTER",
+          tooltip = "Healing per participant: each appearance's healing divided by that match's player count, averaged across appearances.",
           cell = function(v) return fmt(v) end },
-        { key = "kills",        label = "Total K",   width = 95,  align = "CENTER" },
-        { key = "deaths",       label = "Total D",   width = 95,  align = "CENTER" },
-        { key = "kd_ratio",     label = "K/D",       width = 60,  align = "CENTER",
+        { key = "dmg_index",    label = "D-Idx",    width = 55, align = "CENTER",
+          tooltip = "Damage index: damage vs the average player of the same match (damage / (match total / players)). 1.00 = exactly average, 2.00 = double. Comparable across BG sizes and durations.",
+          cell = function(v) return string.format("%.2f", v or 0) end },
+        { key = "heal_index",   label = "H-Idx",    width = 55, align = "CENTER",
+          tooltip = "Healing index: healing vs the average player of the same match. 1.00 = match average.",
+          cell = function(v) return string.format("%.2f", v or 0) end },
+        { key = "kills",        label = "Total K",  width = 70, align = "CENTER",
+          tooltip = "Total killing blows by this class+spec across all appearances." },
+        { key = "deaths",       label = "Total D",  width = 70, align = "CENTER",
+          tooltip = "Total deaths by this class+spec across all appearances." },
+        { key = "kd_ratio",     label = "K/D",      width = 50, align = "CENTER",
+          tooltip = "Total kills / total deaths (deaths floored at 1 to avoid division by zero).",
           cell = function(v) return string.format("%.2f", v or 0) end },
     }
 
@@ -749,8 +812,10 @@ local function build_specs_tab(parent)
                 kills       = r.kills,
                 deaths      = r.deaths,
                 kd_ratio    = (r.kills or 0) / math.max(r.deaths or 0, 1),
-                avg_damage  = r.appearances > 0 and (r.damage  / r.appearances) or 0,
-                avg_healing = r.appearances > 0 and (r.healing / r.appearances) or 0,
+                avg_damage  = r.appearances > 0 and (r.dmg_per_head  / r.appearances) or 0,
+                avg_healing = r.appearances > 0 and (r.heal_per_head / r.appearances) or 0,
+                dmg_index   = r.dmg_index_n  > 0 and (r.dmg_index_sum  / r.dmg_index_n)  or 0,
+                heal_index  = r.heal_index_n > 0 and (r.heal_index_sum / r.heal_index_n) or 0,
                 _highlight  = true,
                 _is_self    = true,
             })
@@ -766,8 +831,10 @@ local function build_specs_tab(parent)
                 kills       = r.kills,
                 deaths      = r.deaths,
                 kd_ratio    = (r.kills or 0) / math.max(r.deaths or 0, 1),
-                avg_damage  = r.appearances > 0 and (r.damage  / r.appearances) or 0,
-                avg_healing = r.appearances > 0 and (r.healing / r.appearances) or 0,
+                avg_damage  = r.appearances > 0 and (r.dmg_per_head  / r.appearances) or 0,
+                avg_healing = r.appearances > 0 and (r.heal_per_head / r.appearances) or 0,
+                dmg_index   = r.dmg_index_n  > 0 and (r.dmg_index_sum  / r.dmg_index_n)  or 0,
+                heal_index  = r.heal_index_n > 0 and (r.heal_index_sum / r.heal_index_n) or 0,
             })
         end
         return rows

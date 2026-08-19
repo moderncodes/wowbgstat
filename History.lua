@@ -104,6 +104,15 @@ function mod.lifetime_class_stats()
     local me = UnitName("player")
     local out = {}
     for _, m in ipairs(BgStatDB.matches) do
+        -- Match context: size + totals across ALL players (self included).
+        -- Index = player's metric vs the average player of that same match.
+        local match_size, match_dmg, match_heal = 0, 0, 0
+        for _, p in pairs(m.players) do
+            match_size = match_size + 1
+            match_dmg  = match_dmg  + (p.damage  or 0)
+            match_heal = match_heal + (p.healing or 0)
+        end
+
         for name, p in pairs(m.players) do
             if name ~= me then
                 local c = p.class or "UNKNOWN"
@@ -114,6 +123,10 @@ function mod.lifetime_class_stats()
                     best_damage  = { value = 0, name = nil },
                     best_healing = { value = 0, name = nil },
                     best_kills   = { value = 0, name = nil },
+                    dmg_per_head   = 0, heal_per_head  = 0,
+                    dmg_index_sum  = 0, dmg_index_n    = 0,
+                    heal_index_sum = 0, heal_index_n   = 0,
+                    best_index     = { value = 0, name = nil },
                 }
             end
             local row = out[c]
@@ -129,8 +142,20 @@ function mod.lifetime_class_stats()
             if (p.healing or 0) > row.best_healing.value then
                 row.best_healing = { value = p.healing, name = name }
             end
-            if (p.kills or 0) > row.best_kills.value then
-                row.best_kills = { value = p.kills, name = name }
+            row.dmg_per_head  = row.dmg_per_head  + (p.damage  or 0) / match_size
+            row.heal_per_head = row.heal_per_head + (p.healing or 0) / match_size
+
+            if match_dmg > 0 then
+                local idx = (p.damage or 0) * match_size / match_dmg
+                row.dmg_index_sum = row.dmg_index_sum + idx
+                row.dmg_index_n   = row.dmg_index_n + 1
+                if idx > row.best_index.value then
+                    row.best_index = { value = idx, name = name }
+                end
+            end
+            if match_heal > 0 then
+                row.heal_index_sum = row.heal_index_sum + (p.healing or 0) * match_size / match_heal
+                row.heal_index_n   = row.heal_index_n + 1
             end
         end
         end
@@ -153,8 +178,12 @@ function mod.lifetime_spec_stats()
 
     for _, m in ipairs(BgStatDB.matches) do
         local has_any_spec = false
+        local match_size, match_dmg, match_heal = 0, 0, 0
         for _, p in pairs(m.players) do
-            if p.spec_tab then has_any_spec = true; break end
+            match_size = match_size + 1
+            match_dmg  = match_dmg  + (p.damage  or 0)
+            match_heal = match_heal + (p.healing or 0)
+            if p.spec_tab then has_any_spec = true end
         end
         if has_any_spec then
             matches_with_specs = matches_with_specs + 1
@@ -170,6 +199,9 @@ function mod.lifetime_spec_stats()
                             damage = 0, healing = 0, kills = 0, deaths = 0,
                             best_damage  = { value = 0, name = nil },
                             best_healing = { value = 0, name = nil },
+                            dmg_per_head   = 0, heal_per_head  = 0,
+                            dmg_index_sum  = 0, dmg_index_n    = 0,
+                            heal_index_sum = 0, heal_index_n   = 0,
                         }
                     end
                     local row = target[key]
@@ -181,8 +213,15 @@ function mod.lifetime_spec_stats()
                     if (p.damage or 0) > row.best_damage.value then
                         row.best_damage = { value = p.damage,  name = name }
                     end
-                    if (p.healing or 0) > row.best_healing.value then
-                        row.best_healing = { value = p.healing, name = name }
+                    row.dmg_per_head  = row.dmg_per_head  + (p.damage  or 0) / match_size
+                    row.heal_per_head = row.heal_per_head + (p.healing or 0) / match_size
+                    if match_dmg > 0 then
+                        row.dmg_index_sum = row.dmg_index_sum + (p.damage or 0) * match_size / match_dmg
+                        row.dmg_index_n   = row.dmg_index_n + 1
+                    end
+                    if match_heal > 0 then
+                        row.heal_index_sum = row.heal_index_sum + (p.healing or 0) * match_size / match_heal
+                        row.heal_index_n   = row.heal_index_n + 1
                     end
                 end
             end
