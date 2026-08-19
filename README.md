@@ -1,4 +1,4 @@
-# BgStat — TBC Anniversary Edition (2.5.5)
+# BgStat — TBC Anniversary Edition (2.5.6)
 
 Battleground stats, killing-blow tracking, and a six-tab post-match window.
 
