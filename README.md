@@ -15,8 +15,8 @@ Built for **TBC Anniversary**, patch 2.5.6 (Interface `20506`).
    and **not** `_classic_era_` (vanilla servers).
 
 2. Restart WoW and confirm **BgStat** appears in the AddOns list.
-All assets (killing-blow sounds and class images) ship with the addon in
-`BgStat\Res\` — no manual asset setup is needed.
+Killing-blow sounds ship with the addon in `BgStat\Res\` — no manual
+asset setup is needed.
 
 ## Slash commands
 

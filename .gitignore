@@ -8,8 +8,8 @@
 .DS_Store
 Thumbs.db
 
-# Res assets: ignore everything, then whitelist only the files
-# the addon references (Config.lua sounds + README-listed images)
+# Res assets: ignore everything, then whitelist only the
+# killing-blow sounds referenced by T.kb_sounds in Config.lua
 Res/*
 !Res/AllClear.mp3
 !Res/AufWiedersehen.mp3
@@ -26,6 +26,3 @@ Res/*
 !Res/PathCleared.mp3
 !Res/Sorry.mp3
 !Res/Wunderbar.mp3
-!Res/MadBaby.blp
-!Res/Broseph.blp
-!Res/DerpFace.blp
