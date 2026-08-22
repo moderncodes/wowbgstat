@@ -4,12 +4,14 @@ local res = "Interface\\AddOns\\BgStat\\Res\\"
 
 -- KB sounds. One picked at random per killing blow.
 T.kb_sounds = {
-    res.."AllClear.mp3",    res.."AufWiedersehen.mp3", res.."EnemyWeakened.MP3",
-    res.."Excellent.mp3",   res.."GoodGame.mp3",       res.."GreatShot.mp3",
-    res.."Halo.mp3",        res.."Hehhe.mp3",          res.."Jahahaha.mp3",
-    res.."JaWohl.mp3",      res.."JaWohl2.mp3",        res.."Nein.mp3",
-    res.."PathCleared.mp3", res.."Sorry.mp3",          res.."Wunderbar.mp3",
+    res.."BarelyFelt.mp3",    res.."CorpseRun.mp3",  res.."Deleted.mp3",
+    res.."Deprioritized.mp3", res.."ForFree.mp3",    res.."KillLogged.mp3",
+    res.."ResTimer.mp3",      res.."SitDown.mp3",    res.."ThePile.mp3",
 }
+
+-- Killing-blow voice lines. Set false here (or via /bgstat config) to
+-- silence them without touching the rest of the addon.
+T.kb_sound_enabled = true
 
 T.bg_zones = {
     ["Warsong Gulch"]    = "WSG",

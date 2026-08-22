@@ -11,18 +11,12 @@ Thumbs.db
 # Res assets: ignore everything, then whitelist only the
 # killing-blow sounds referenced by T.kb_sounds in Config.lua
 Res/*
-!Res/AllClear.mp3
-!Res/AufWiedersehen.mp3
-!Res/EnemyWeakened.MP3
-!Res/Excellent.mp3
-!Res/GoodGame.mp3
-!Res/GreatShot.mp3
-!Res/Halo.mp3
-!Res/Hehhe.mp3
-!Res/Jahahaha.mp3
-!Res/JaWohl.mp3
-!Res/JaWohl2.mp3
-!Res/Nein.mp3
-!Res/PathCleared.mp3
-!Res/Sorry.mp3
-!Res/Wunderbar.mp3
+!Res/BarelyFelt.mp3
+!Res/CorpseRun.mp3
+!Res/Deleted.mp3
+!Res/Deprioritized.mp3
+!Res/ForFree.mp3
+!Res/KillLogged.mp3
+!Res/ResTimer.mp3
+!Res/SitDown.mp3
+!Res/ThePile.mp3

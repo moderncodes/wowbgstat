@@ -14,6 +14,7 @@ T.options = mod
 
 local CONFIG_KEYS = {
     "spec_scan_enabled",
+    "kb_sound_enabled",
     "disable_error_speech",
     "max_history",
     "nameplate_friendly",
@@ -57,6 +58,15 @@ local options_table = {
             get = function() return get("spec_scan_enabled") end,
             set = function(_, v) set("spec_scan_enabled", v) end,
             order = 2,
+            width = "full",
+        },
+        kb_sound_enabled = {
+            type = "toggle",
+            name = "Killing-blow voice lines",
+            desc = "Play a radio voice line when you land a killing blow.",
+            get = function() return get("kb_sound_enabled") end,
+            set = function(_, v) set("kb_sound_enabled", v) end,
+            order = 2.5,
             width = "full",
         },
         disable_error_speech = {

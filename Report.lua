@@ -6,6 +6,7 @@ T.report = mod
 local last_chat_send = 0
 
 T.on_killing_blow = function()
+    if not T.kb_sound_enabled then return end
     PlaySoundFile(T.kb_sounds[math.random(#T.kb_sounds)], "Master")
 end
 
