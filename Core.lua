@@ -217,23 +217,6 @@ for _, e in ipairs({
 }) do frame:RegisterEvent(e) end
 
 SLASH_BGSTAT1, SLASH_BGSTAT2 = "/bgstat", "/bgs"
-SLASH_BGSTATSCAN1 = "/bgstatscan"
-SlashCmdList.BGSTATSCAN = function()
-    local fr = T.spec_scanner
-    local n = GetNumGroupMembers and GetNumGroupMembers() or 0
-    local in_range, total = 0, 0
-    if IsInRaid() then
-        for i = 1, n do
-            if UnitExists("raid"..i) then
-                total = total + 1
-                if CheckInteractDistance("raid"..i, 1) then in_range = in_range + 1 end
-            end
-        end
-    end
-    DEFAULT_CHAT_FRAME:AddMessage(string.format(
-        "|cff00d606BgStat scan:|r enabled=%s detected=%d friendlies=%d in_range=%d",
-        tostring(fr.is_enabled()), fr.get_detected_count(), total, in_range))
-end
 SlashCmdList.BGSTAT = function(msg)
     msg = (msg or ""):lower():match("^%s*(.-)%s*$")
     if msg == "" then

@@ -122,13 +122,6 @@ local function build_table(parent, x, y, w, h, columns, get_rows, default_sort)
         local rows = get_rows() or {}
         table.sort(rows, function(a, b)
             local av, bv = a[sort_state.key], b[sort_state.key]
-            if type(av) ~= type(bv) and av ~= nil and bv ~= nil then
-                DEFAULT_CHAT_FRAME:AddMessage(string.format(
-                    "|cffff0000MM SORT MISMATCH|r key=%s a=%s(%s) b=%s(%s)",
-                    tostring(sort_state.key),
-                    tostring(av), type(av),
-                    tostring(bv), type(bv)))
-            end
             if type(av) == "string" or type(bv) == "string" then
                 av = av ~= nil and tostring(av) or ""
                 bv = bv ~= nil and tostring(bv) or ""
