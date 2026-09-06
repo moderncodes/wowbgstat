@@ -622,6 +622,8 @@ local function build_history_tab(parent)
                 wins       = r.wins,
                 losses     = r.losses,
                 incomplete = r.incomplete,
+                win_pct    = (r.wins + r.losses) > 0
+                             and 100 * r.wins / (r.wins + r.losses) or -1,
                 kills      = r.kills,
                 deaths     = r.deaths,
                 honor      = r.honor,

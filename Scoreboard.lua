@@ -87,6 +87,7 @@ function mod.refresh()
             existing.damage          = damage          or 0
             existing.healing         = healing         or 0
             T.combat_log.set_player(short, existing)
+            T.spec_scanner.merge_pending_into_player(short)
         end
     end
 

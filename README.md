@@ -89,8 +89,8 @@ Chart depth follows the "Max matches in history" setting.
 
 ## Notes
 - History is capped at the last 100 matches (configurable via `/bgstat config` or `Config.lua`).
-- Match history is account-wide, but the Kills and Trends tabs show only the logged-in character's matches.\
-  Matches saved before the per-character stamp was added are attributed by whether your character appears in the match's player list.
+- Match history is saved account-wide, but History, Kills, and Trends show only the logged-in character's matches.\
+  Classes and Specs pool every character's matches, since they describe the player population, not you.
 - The spec scanner respects the global inspect lock; other addons doing inspects can briefly compete with it.
 - The options panel requires **Ace3** (optional dependency).\
   Everything else works without it.

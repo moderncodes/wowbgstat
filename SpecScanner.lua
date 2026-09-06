@@ -36,9 +36,8 @@ local SCAN_INTERVAL   = 2     -- seconds between scans
 
 -- Map name -> { tab_index, points } once detected. Cleared on match start.
 local detected = {}
-local attempted = {}    -- name -> true once we've tried (success OR failure)
-local recently_failed = {}    -- name -> GetTime() of last failed inspect
-local FAILURE_COOLDOWN = 10   -- seconds before retrying a failed inspect
+local last_attempt = {}       -- name -> GetTime() of last NotifyInspect issued
+local RETRY_COOLDOWN = 10     -- seconds before re-inspecting a target that didn't yield a spec
 
 -- Friendly-unit iteration: in a BG you're auto-grouped. raid1..raid40
 -- covers your entire team. party1..party4 is fallback for very small groups.
@@ -60,21 +59,16 @@ local function unit_name_short(unit)
 end
 
 -- Pick the next friendly we can inspect and don't yet have spec for.
+-- CanInspect already encodes inspect range; no separate range gate needed.
+-- (CheckInteractDistance is protected in BG instances on Anniversary.)
 local function pick_target()
     for _, unit in ipairs(iter_friendly_units()) do
         if not UnitIsUnit(unit, "player")
            and UnitExists(unit) and UnitIsConnected(unit) and CanInspect(unit) then
-            -- UnitIsVisible(unit) returns true when the unit is rendered in
-            -- your view, roughly equivalent to inspect range (~30 yards).
-            -- We use it instead of CheckInteractDistance, which is protected
-            -- in BG instances on TBC Anniversary 2.5.5 and produces
-            -- ADDON_ACTION_BLOCKED Lua errors.
-            -- Source: https://wowpedia.fandom.com/wiki/API_UnitIsVisible
-            if UnitIsVisible(unit) then
-                local name = unit_name_short(unit)
-                if name and not detected[name] and not attempted[name] then
-                    return unit, name
-                end
+            local name = unit_name_short(unit)
+            if name and not detected[name]
+               and (not last_attempt[name] or GetTime() - last_attempt[name] > RETRY_COOLDOWN) then
+                return unit, name
             end
         end
     end
@@ -98,7 +92,7 @@ local function tick()
     local unit, name = pick_target()
     if not unit then return end
 
-    attempted[name] = true   -- Mark BEFORE the call. Never retry, even on failure.
+    last_attempt[name] = GetTime()
     pending_unit, pending_started = name, GetTime()
     NotifyInspect(unit)
 end
@@ -168,7 +162,7 @@ end
 function mod.start()
     if not enabled then return end
     wipe(detected)
-    wipe(attempted)
+    wipe(last_attempt)
     if mod._pending_specs then wipe(mod._pending_specs) end
     clear_pending()
 

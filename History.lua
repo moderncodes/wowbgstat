@@ -39,7 +39,8 @@ function mod.save_current(zone, honor_delta, honor_capped)
         table.insert(snapshot.kills, {
             victim       = k.victim,
             victim_full  = k.victim_full,
-            victim_class = k.victim_class,
+            victim_class = k.victim_class
+                           or (T.combat_log.get_player(k.victim) or {}).class,
             spell_id     = k.spell_id,
             spell_name   = k.spell_name,
             damage       = k.damage,
@@ -51,6 +52,13 @@ function mod.save_current(zone, honor_delta, honor_capped)
     while #BgStatDB.matches > T.max_history do
         table.remove(BgStatDB.matches, 1)
     end
+end
+
+-- Only this character's matches. Old snapshots lack `character`; fall back
+-- to presence in the roster (your own alts can't share a BG).
+local function is_mine(m, me)
+    return (m.character == me)
+        or (m.character == nil and m.players[me] ~= nil)
 end
 
 function mod.get_all()    return BgStatDB.matches end
@@ -65,6 +73,7 @@ function mod.summary_by_zone()
                      kills = 0, deaths = 0, honor = 0 }
 
     for _, m in ipairs(BgStatDB.matches) do
+      if is_mine(m, me) then
         local z = m.zone or "Unknown"
         if not out[z] then
             out[z] = { games = 0, wins = 0, losses = 0, incomplete = 0,
@@ -99,6 +108,7 @@ function mod.summary_by_zone()
                 totals.losses = totals.losses + 1
             end
         end
+      end
     end
 
     return out, totals
@@ -241,12 +251,7 @@ function mod.recent_kills(limit)
     local out = {}
     for mi = #BgStatDB.matches, 1, -1 do
         local m = BgStatDB.matches[mi]
-        -- Only this character's matches. Old snapshots lack `character`;
-        -- fall back to presence in the match's player list (same assumption
-        -- summary_by_zone uses -- your own alts can't share a BG).
-        local is_mine = (m.character == me)
-            or (m.character == nil and m.players[me] ~= nil)
-        if is_mine then
+        if is_mine(m, me) then
         for ki = #(m.kills or {}), 1, -1 do
             local k = m.kills[ki]
             table.insert(out, {
@@ -273,9 +278,7 @@ function mod.trend_series(limit)
     for mi = #BgStatDB.matches, 1, -1 do
         local m = BgStatDB.matches[mi]
         local mine = m.players[me]
-        local is_mine = (m.character == me)
-            or (m.character == nil and mine ~= nil)
-        if is_mine and mine and mine.faction ~= nil then
+        if is_mine(m, me) and mine and mine.faction ~= nil then
             local n, tk, td, tdmg, theal = 0, 0, 0, 0, 0
             for _, p in pairs(m.players) do
                 if p.faction == mine.faction then
