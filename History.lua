@@ -8,19 +8,22 @@ function mod.init()
     if not BgStatDB.matches then BgStatDB.matches = {} end
 end
 
-function mod.save_current(zone, honor_delta, honor_capped)
+-- `winner` is passed in because the two flavors learn it differently:
+-- Anniversary polls GetBattlefieldWinner(), retail gets it as the
+-- PVP_MATCH_COMPLETE payload.
+function mod.save_current(zone, honor_delta, honor_capped, winner)
     local snapshot = {
-        character    = UnitName("player"),
+        character    = T.me(),
         zone         = zone,
         timestamp    = time(),
-        winner       = GetBattlefieldWinner(),
+        winner       = winner,
         honor_delta  = honor_delta or 0,
         honor_capped = honor_capped or nil,
         players      = {},
         kills        = {},
     }
 
-    for name, p in pairs(T.combat_log.get_all_players()) do
+    for name, p in pairs(T.store.get_all_players()) do
         snapshot.players[name] = {
             class           = p.class,
             faction         = p.faction,
@@ -35,12 +38,12 @@ function mod.save_current(zone, honor_delta, honor_capped)
         }
     end
 
-    for _, k in ipairs(T.combat_log.get_kill_log()) do
+    for _, k in ipairs(T.store.get_kill_log()) do
         table.insert(snapshot.kills, {
             victim       = k.victim,
             victim_full  = k.victim_full,
             victim_class = k.victim_class
-                           or (T.combat_log.get_player(k.victim) or {}).class,
+                           or (T.store.get_player(k.victim) or {}).class,
             spell_id     = k.spell_id,
             spell_name   = k.spell_name,
             damage       = k.damage,
@@ -67,7 +70,7 @@ function mod.delete_all() BgStatDB.matches = {} end
 function mod.get_last() return BgStatDB.matches[#BgStatDB.matches] end
 
 function mod.summary_by_zone()
-    local me = UnitName("player")
+    local me = T.me()
     local out = {}
     local totals = { games = 0, wins = 0, losses = 0, incomplete = 0,
                      kills = 0, deaths = 0, honor = 0 }
@@ -115,7 +118,7 @@ function mod.summary_by_zone()
 end
 
 function mod.lifetime_class_stats()
-    local me = UnitName("player")
+    local me = T.me()
     local out = {}
     for _, m in ipairs(BgStatDB.matches) do
         -- Match context: size + totals across ALL players (self included).
@@ -185,7 +188,7 @@ function mod.lifetime_spec_stats()
     -- Self is split into a separate `you` table (same shape, keyed by
     -- class/spec) so the UI can render self rows highlighted without
     -- skewing the aggregated population averages.
-    local me = UnitName("player")
+    local me = T.me()
     local out = {}
     local you = {}
     local matches_with_specs = 0
@@ -247,7 +250,7 @@ end
 function mod.recent_kills(limit)
     -- Newest first, across matches. Kills within a match are chronological,
     -- so walk matches newest->oldest and each match's kills back-to-front.
-    local me = UnitName("player")
+    local me = T.me()
     local out = {}
     for mi = #BgStatDB.matches, 1, -1 do
         local m = BgStatDB.matches[mi]
@@ -273,7 +276,7 @@ function mod.trend_series(limit)
     -- Last `limit` matches for the current character, oldest -> newest.
     -- Each point: your kills/deaths/damage/healing + your team's per-player
     -- average of the same, from the saved snapshot (fully retroactive).
-    local me = UnitName("player")
+    local me = T.me()
     local out = {}
     for mi = #BgStatDB.matches, 1, -1 do
         local m = BgStatDB.matches[mi]

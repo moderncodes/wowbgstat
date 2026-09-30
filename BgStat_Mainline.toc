@@ -1,23 +1,19 @@
-## Interface: 20506
+## Interface: 120100
 ## Title: BgStat
-## Notes: Battleground stats, KB tracking, post-match window (TBC Anniversary 2.5.6)
+## Notes: Battleground stats from the end-of-match scoreboard: history, class and spec analytics, trends (Retail 12.1)
 ## Author: TBC Anniversary port
 ## Version: 1.1.0
 ## X-License: MIT
 ## SavedVariables: BgStatDB
 ## SavedVariablesPerCharacter: BgStatUI
-## X-Min-Interface: 20501
 ## OptionalDeps: Ace3
 
 Config.lua
 Options.lua
 Store.lua
-CombatLog.lua
-Scoreboard.lua
-SpecScanner.lua
-Nameplates.lua
+Scoreboard_Retail.lua
 History.lua
 Report.lua
 UI.lua
 Slash.lua
-Core.lua
+Core_Retail.lua

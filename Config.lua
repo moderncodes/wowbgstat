@@ -1,5 +1,15 @@
 local _, T = ...
 
+-- Flavor switch. Retail (Midnight, 12.x) hides live combat data from addons,
+-- so BgStat_Mainline.toc loads Scoreboard_Retail.lua + Core_Retail.lua in place
+-- of CombatLog / Scoreboard / SpecScanner / Nameplates / Core.
+T.is_retail = (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE)
+
+-- Own character name. Every module goes through this one accessor so retail
+-- can serve a cached copy (see Core_Retail.lua) instead of calling UnitName
+-- inside a PvP match.
+function T.me() return UnitName("player") end
+
 local res = "Interface\\AddOns\\BgStat\\Res\\"
 
 -- KB sounds. One picked at random per killing blow.
@@ -18,6 +28,17 @@ T.bg_zones = {
     ["Arathi Basin"]     = "AB",
     ["Alterac Valley"]   = "AV",
     ["Eye of the Storm"] = "EotS",
+    -- Retail-only maps. Unlisted zones fall back to their full name.
+    ["Twin Peaks"]             = "TP",
+    ["The Battle for Gilneas"] = "BfG",
+    ["Silvershard Mines"]      = "SSM",
+    ["Temple of Kotmogu"]      = "ToK",
+    ["Deepwind Gorge"]         = "DWG",
+    ["Seething Shore"]         = "SS",
+    ["Deephaul Ravine"]        = "DHR",
+    ["Isle of Conquest"]       = "IoC",
+    ["Wintergrasp"]            = "WG",
+    ["Ashran"]                 = "Ashran",
 }
 
 T.max_history           = 100

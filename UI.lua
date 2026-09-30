@@ -245,7 +245,7 @@ local popup_frame
 
 local function popup_compute_lines(match)
     -- Returns ordered array of 5 display strings.
-    local me = UnitName("player")
+    local me = T.me()
     local mine = match.players[me]
     if not mine or not mine.faction then return nil end
     local my_faction = mine.faction
@@ -385,7 +385,7 @@ function mod.show_match_popup(match)
     if not lines or #lines == 0 then return end
 
     -- Header: BG name + result
-    local me = UnitName("player")
+    local me = T.me()
     local mine = match.players[me]
     local result = ""
     if match.winner ~= nil and mine then
@@ -468,7 +468,7 @@ local function build_last_match_tab(parent)
         { key = "_idx",    label = "#",        width = 28,  align = "CENTER",
           tooltip = "Row position under the current sort. Re-numbers whenever you change the sort column or direction." },
         { key = "name",    label = "Name",     width = 130,
-          tooltip = "Player name (realm stripped). Gold row = you. Blue rows = Alliance, red rows = Horde." },
+          tooltip = "Player name. Gold row = you. Blue rows = Alliance, red rows = Horde." },
         { key = "class",   label = "Class",    width = 80,
           tooltip = "Class from the BG scoreboard, shown in its class color.",
           cell = function(c) return colored(c, c or "?") end },
@@ -485,13 +485,15 @@ local function build_last_match_tab(parent)
           tooltip = "Total healing done this match, from the BG scoreboard.",
           cell = function(v) return fmt(v) end },
         { key = "honor",   label = "Honor",    width = 70,  align = "CENTER",
-          tooltip = "Bonus honor from the BG scoreboard (objectives and win bonus). Does NOT include per-kill honor — your true total for the match is the honor line above the table, parsed from chat." },
+          tooltip = T.is_retail
+              and "Honor gained this match, from the BG scoreboard."
+              or  "Bonus honor from the BG scoreboard (objectives and win bonus). Does NOT include per-kill honor — your true total for the match is the honor line above the table, parsed from chat." },
     }
 
     local function get_rows()
         local match = T.history.get_last()
         if not match then return {} end
-        local me = UnitName("player")
+        local me = T.me()
         local filter = (BgStatUI and BgStatUI.faction_filter) or "all"
         local rows = {}
         for name, p in pairs(match.players) do
@@ -539,7 +541,7 @@ local function build_last_match_tab(parent)
             if v == current then btn:LockHighlight() else btn:UnlockHighlight() end
         end
 
-        local me = UnitName("player")
+        local me = T.me()
         local mine = match.players[me]
         local result = "—"
         if match.winner ~= nil and mine then
@@ -608,7 +610,9 @@ local function build_history_tab(parent)
         { key = "deaths",     label = "Deaths", width = 70,  align = "CENTER",
           tooltip = "Your total deaths across all saved matches in this BG." },
         { key = "honor",      label = "Honor",  width = 90,  align = "CENTER",
-          tooltip = "Your total honor earned in this BG, parsed from chat messages (includes per-kill, objective, and win-bonus honor).",
+          tooltip = T.is_retail
+              and "Your total honor earned in this BG, from your scoreboard row at the end of each match."
+              or  "Your total honor earned in this BG, parsed from chat messages (includes per-kill, objective, and win-bonus honor).",
           cell = function(v) return fmt(v) end },
     }
 
@@ -744,7 +748,8 @@ local function build_specs_tab(parent)
 
     local header = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     header:SetPoint("TOPLEFT", 12, -10)
-    header:SetText("Specs (friendlies only — auto-scanned)")
+    header:SetText(T.is_retail and "Specs (both factions — from the scoreboard)"
+                                or  "Specs (friendlies only — auto-scanned)")
 
     local sub = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     sub:SetPoint("TOPLEFT", 12, -32)
@@ -760,15 +765,17 @@ local function build_specs_tab(parent)
         { key = "_idx",         label = "#",        width = 28,  align = "CENTER",
           tooltip = "Row position under the current sort. Re-numbers whenever you change the sort column or direction." },
         { key = "label",        label = "Spec + Class", width = 170,
-          tooltip = "Dominant talent tree detected by the auto-scanner (friendly faction only, must have been within ~28 yards during a BG). Gold rows marked (YOU) are your own characters, tracked separately from the population.",
+          tooltip = T.is_retail
+              and "Specialization as listed on the end-of-match scoreboard (both factions). Gold rows marked (YOU) are your own characters, tracked separately from the population."
+              or  "Dominant talent tree detected by the auto-scanner (friendly faction only, must have been within ~28 yards during a BG). Gold rows marked (YOU) are your own characters, tracked separately from the population.",
           cell = function(_, row)
-              local spec = T.spec_scanner.spec_name(row.class, row.spec_tab) or "?"
+              local spec = T.spec_name(row.class, row.spec_tab) or "?"
               local base = string.format("%s %s", spec, colored(row.class, row.class or "?"))
               if row._is_self then base = base .. " (YOU)" end
               return base
           end },
         { key = "appearances",  label = "Seen",     width = 50, align = "CENTER",
-          tooltip = "Total appearances of this class+spec: each scanned player in each match counts once." },
+          tooltip = "Total appearances of this class+spec: each player in each match counts once." },
         { key = "avg_damage",   label = "Dmg/P",    width = 80, align = "CENTER",
           tooltip = "Damage per participant: each appearance's damage divided by that match's player count, averaged across appearances. Normalizes 10-man WSG vs 40-man AV.",
           cell = function(v) return fmt(v) end },
@@ -798,7 +805,7 @@ local function build_specs_tab(parent)
         -- _highlight set so build_table tints them gold via its existing logic.
         -- Inline placement so they sort naturally with the rest.
         for _, r in pairs(you or {}) do
-            local spec = T.spec_scanner.spec_name(r.class, r.spec_tab) or "?"
+            local spec = T.spec_name(r.class, r.spec_tab) or "?"
             table.insert(rows, {
                 class       = r.class,
                 spec_tab    = r.spec_tab,
@@ -820,7 +827,7 @@ local function build_specs_tab(parent)
             table.insert(rows, {
                 class       = r.class,
                 spec_tab    = r.spec_tab,
-                label       = (T.spec_scanner.spec_name(r.class, r.spec_tab) or "?")
+                label       = (T.spec_name(r.class, r.spec_tab) or "?")
                               .. " " .. (r.class or "?"),
                 appearances = r.appearances,
                 kills       = r.kills,
@@ -874,7 +881,9 @@ local function build_kills_tab(parent)
 
     local sub = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     sub:SetPoint("TOPLEFT", 12, -32)
-    sub:SetText("Last 500 killing blows across saved matches. Older kills may lack damage/realm data.")
+    sub:SetText(T.is_retail
+        and "Last 500 killing blows across saved matches. Retail does not expose the spell or damage of a kill."
+        or  "Last 500 killing blows across saved matches. Older kills may lack damage/realm data.")
 
     local empty = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableLarge")
     empty:SetPoint("CENTER", 0, 0)
@@ -902,6 +911,14 @@ local function build_kills_tab(parent)
           tooltip = "Date and time of the kill. Kills saved before this feature fall back to the match's end time.",
           cell = function(v) return format_time(v) end },
     }
+
+    -- Retail has no combat log, so a kill carries no spell or damage. Drop
+    -- those two columns and hand their width to Victim.
+    if T.is_retail then
+        table.remove(columns, 5)   -- Killed With
+        table.remove(columns, 4)   -- Damage
+        columns[2].width = columns[2].width + 240
+    end
 
     local function get_rows()
         return T.history.recent_kills(500)
@@ -1213,14 +1230,18 @@ local function build_main_frame()
     -- Build tabs at the bottom of the main frame
     local tab_names = { "Last Match", "History", "Classes", "Specs", "Kills", "Trends" }
     for i, name in ipairs(tab_names) do
-        local tab = CreateFrame("Button", "BgStatTab" .. i, f, "CharacterFrameTabButtonTemplate")
+        -- CharacterFrameTabButtonTemplate only ships with the classic flavors;
+        -- mainline replaced it with PanelTabButtonTemplate (12.1 UI source:
+        -- Blizzard_SharedXML/Mainline/SharedUIPanelTemplates.xml).
+        local tab = CreateFrame("Button", "BgStatTab" .. i, f,
+            T.is_retail and "PanelTabButtonTemplate" or "CharacterFrameTabButtonTemplate")
         tab:SetID(i)
         tab:SetText(name)
         tab:SetScript("OnClick", function() show_tab(i) end)
         if i == 1 then
             tab:SetPoint("TOPLEFT", f, "BOTTOMLEFT", 8, 2)
         else
-            tab:SetPoint("LEFT", tabs[i - 1], "RIGHT", -16, 0)
+            tab:SetPoint("LEFT", tabs[i - 1], "RIGHT", T.is_retail and 1 or -16, 0)
         end
         PanelTemplates_TabResize(tab, 0)
         tabs[i] = tab

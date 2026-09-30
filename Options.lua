@@ -153,6 +153,10 @@ local options_table = {
     },
 }
 
+-- Exposed so Core_Retail.lua can drop the entries that have no meaning on
+-- retail (spec scanner, nameplate badges) before the panel is registered.
+mod.args = options_table.args
+
 function mod.init()
     load_saved()
 

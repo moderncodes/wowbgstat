@@ -3,8 +3,6 @@ local _, T = ...
 local mod = {}
 T.combat_log = mod
 
-local players  = {}   -- name -> stats (populated from scoreboard)
-local kill_log = {}   -- list of YOUR KBs this match
 local last_dmg     = {}   -- victim -> {spell_id, spell_name, amount} from your last hit
 local pending_kill = {}   -- victim -> kill_log entry waiting for its fatal damage event
 
@@ -69,7 +67,8 @@ function mod.handle_event()
         record_hit(dst, arg1, arg2, arg4)
 
     elseif event == "PARTY_KILL" then
-        local victim_class = players[dst] and players[dst].class
+        local p = T.store.get_player(dst)
+        local victim_class = p and p.class
         local k = {
             victim       = dst,
             victim_full  = dest_name,   -- keeps -Realm suffix if present
@@ -78,23 +77,13 @@ function mod.handle_event()
             timestamp    = GetTime(),
             at           = time(),      -- wall clock for history display
         }
-        table.insert(kill_log, k)
+        T.store.add_kill(k)
         pending_kill[dst] = k
         if T.on_killing_blow then T.on_killing_blow(dst, victim_class) end
     end
 end
 
-function mod.set_player(name, data)
-    players[name] = data
-end
-
-function mod.get_player(name)     return players[name] end
-function mod.get_all_players()    return players end
-function mod.get_kill_log()       return kill_log end
-
 function mod.reset()
-    wipe(players)
-    wipe(kill_log)
     wipe(last_dmg)
     wipe(pending_kill)
 end

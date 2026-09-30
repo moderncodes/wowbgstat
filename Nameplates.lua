@@ -58,7 +58,7 @@ local function attach(plate, unit)
     if not should_show(unit) then hide(o); return end
 
     local name = UnitName(unit)
-    local p = name and T.combat_log.get_player(name)
+    local p = name and T.store.get_player(name)
     if not p then hide(o); return end
 
     local kd = build_kd_text(p)

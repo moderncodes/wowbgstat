@@ -5,6 +5,19 @@ T.report = mod
 
 local last_chat_send = 0
 
+-- Retail moved SendChatMessage into C_ChatInfo and blocks addon chat while its
+-- messaging lockdown is up (C_ChatInfo.InChatMessagingLockdown, 12.0+).
+-- A client without them falls through to the global.
+local send_chat = C_ChatInfo.SendChatMessage or SendChatMessage
+
+local function chat_locked()
+    return C_ChatInfo.InChatMessagingLockdown and C_ChatInfo.InChatMessagingLockdown()
+end
+
+local function send_bg_chat(message)
+    send_chat(message, "INSTANCE_CHAT")
+end
+
 T.on_killing_blow = function()
     if not T.kb_sound_enabled then return end
     PlaySoundFile(T.kb_sounds[math.random(#T.kb_sounds)], "Master")
@@ -29,7 +42,7 @@ function mod.send_end_of_match()
     if not match then return end
     if match.winner == nil then return end   -- skip incomplete matches
 
-    local me = UnitName("player")
+    local me = T.me()
     local mine = match.players[me]
 
     -- Private line: your stats. Print only.
@@ -101,7 +114,7 @@ function mod.send_end_of_match()
 
     local message = table.concat(parts, " ")
     if #message > 255 then message = message:sub(1, 255) end
-    SendChatMessage(message, "INSTANCE_CHAT")
+    if not chat_locked() then send_bg_chat(message) end
 
     -- Auto-show the visual popup. The popup also has its own re-send button.
     if T.ui and T.ui.show_match_popup then
@@ -111,6 +124,17 @@ end
 
 -- Brief BG-chat broadcast for /bgstat send. Pulls top-3 dmg from this match.
 function mod.send_to_chat()
+    if chat_locked() then
+        DEFAULT_CHAT_FRAME:AddMessage("BgStat: chat is locked by the game right now")
+        return
+    end
+
+    -- Retail only fills the store once the match is over.
+    if not next(T.store.get_all_players()) then
+        DEFAULT_CHAT_FRAME:AddMessage("BgStat: no scoreboard data to send yet")
+        return
+    end
+
     local now = GetTime()
     if now - last_chat_send < T.send_to_chat_cooldown then
         DEFAULT_CHAT_FRAME:AddMessage("BgStat: chat cooldown active")
@@ -118,26 +142,26 @@ function mod.send_to_chat()
     end
     last_chat_send = now
 
-    local me = UnitName("player")
-    local mine = T.combat_log.get_player(me)
-    SendChatMessage("== BgStat After-Action ==", "INSTANCE_CHAT")
+    local me = T.me()
+    local mine = T.store.get_player(me)
+    send_bg_chat("== BgStat After-Action ==")
     if mine then
-        SendChatMessage(string.format(
+        send_bg_chat(string.format(
             "%s: %d kills / %d deaths / %s damage / %s healing",
             me, mine.kills or 0, mine.deaths or 0,
             format_number(mine.damage or 0),
-            format_number(mine.healing or 0)), "INSTANCE_CHAT")
+            format_number(mine.healing or 0)))
     end
 
     local list = {}
-    for n, p in pairs(T.combat_log.get_all_players()) do
+    for n, p in pairs(T.store.get_all_players()) do
         if (p.damage or 0) > 0 then
             table.insert(list, { name = n, damage = p.damage })
         end
     end
     table.sort(list, function(a, b) return a.damage > b.damage end)
     for i = 1, math.min(3, #list) do
-        SendChatMessage(string.format("  %d. %s - %s",
-            i, list[i].name, format_number(list[i].damage)), "INSTANCE_CHAT")
+        send_bg_chat(string.format("  %d. %s - %s",
+            i, list[i].name, format_number(list[i].damage)))
     end
 end

@@ -59,6 +59,7 @@ local function on_match_start(zone)
     in_bg, last_winner, current_zone = true, nil, zone
     honor_match_total = 0
     saved_match_ref   = nil
+    T.store.reset()
     T.combat_log.reset()
 
     -- Seed our own player record with current spec. The scanner skips self
@@ -66,7 +67,7 @@ local function on_match_start(zone)
     -- ourselves. Scoreboard.refresh later merges BG numbers in without
     -- overwriting these fields. isInspect=false reads the player's own talents.
     -- Source: https://wowpedia.fandom.com/wiki/API_GetTalentTabInfo
-    local me = UnitName("player")
+    local me = T.me()
     local _, my_class = UnitClass("player")
     if me and my_class then
         local best_tab, best_points = nil, -1
@@ -79,7 +80,7 @@ local function on_match_start(zone)
             end
         end
         if best_tab and best_points > 0 then
-            T.combat_log.set_player(me, {
+            T.store.set_player(me, {
                 class      = my_class,
                 spec_class = my_class,
                 spec_tab   = best_tab,
@@ -129,7 +130,8 @@ local function on_match_end()
             "|cff00d606BgStat:|r no honor banked this match -- you are at the honor cap")
     end
 
-    T.history.save_current(zone_to_save or "Unknown BG", honor_match_total, honor_capped)
+    T.history.save_current(zone_to_save or "Unknown BG", honor_match_total, honor_capped,
+                           GetBattlefieldWinner())
     saved_match_ref = BgStatDB.matches[#BgStatDB.matches]
 
     if T.spec_scanner then T.spec_scanner.stop() end
@@ -179,7 +181,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
             -- updates as final credits land. Re-poll and update the saved match.
             -- Source: https://wowpedia.fandom.com/wiki/API_GetBattlefieldScore
             T.scoreboard.refresh()
-            for name, p in pairs(T.combat_log.get_all_players()) do
+            for name, p in pairs(T.store.get_all_players()) do
                 local sp = saved_match_ref.players[name]
                 if sp and (p.honor or 0) > (sp.honor or 0) then
                     sp.honor = p.honor
@@ -215,35 +217,3 @@ for _, e in ipairs({
     "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED",
     "CHAT_MSG_COMBAT_HONOR_GAIN",
 }) do frame:RegisterEvent(e) end
-
-SLASH_BGSTAT1, SLASH_BGSTAT2 = "/bgstat", "/bgs"
-SlashCmdList.BGSTAT = function(msg)
-    msg = (msg or ""):lower():match("^%s*(.-)%s*$")
-    if msg == "" then
-        T.ui.toggle()
-    elseif msg == "help" then
-        DEFAULT_CHAT_FRAME:AddMessage("BgStat: /bgstat (toggle window) | /bgstat last | /bgstat history | /bgstat classes | /bgstat specs | /bgstat kills | /bgstat trends | /bgstat send | /bgstat config | /bgstat clear")
-    elseif msg == "last" or msg == "report" then
-        T.ui.show(1)
-    elseif msg == "history" then
-        T.ui.show(2)
-    elseif msg == "classes" then
-        T.ui.show(3)
-    elseif msg == "specs" then
-        T.ui.show(4)
-    elseif msg == "kills" then
-        T.ui.show(5)
-    elseif msg == "trends" then
-        T.ui.show(6)
-    elseif msg == "config" or msg == "options" then
-        T.options.open()
-    elseif msg == "send" then
-        T.report.send_to_chat()
-    elseif msg == "clear" then
-        T.history.delete_all()
-        DEFAULT_CHAT_FRAME:AddMessage("BgStat: history cleared")
-        T.ui.refresh_active()
-    else
-        DEFAULT_CHAT_FRAME:AddMessage("BgStat: unknown command - try /bgstat help")
-    end
-end

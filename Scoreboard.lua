@@ -76,7 +76,7 @@ function mod.refresh()
 
             -- Merge into existing record so scanner-set fields (spec_class,
             -- spec_tab) survive scoreboard refreshes.
-            local existing = T.combat_log.get_player(short) or {}
+            local existing = T.store.get_player(short) or {}
             existing.name            = short
             existing.class           = class_token
             existing.faction         = faction
@@ -86,12 +86,12 @@ function mod.refresh()
             existing.honorable_kills = hks             or 0
             existing.damage          = damage          or 0
             existing.healing         = healing         or 0
-            T.combat_log.set_player(short, existing)
+            T.store.set_player(short, existing)
             T.spec_scanner.merge_pending_into_player(short)
         end
     end
 
-    assign_ranks(T.combat_log.get_all_players())
+    assign_ranks(T.store.get_all_players())
 end
 
 function mod.is_match_over()

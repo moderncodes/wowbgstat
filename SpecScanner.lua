@@ -23,6 +23,7 @@ function mod.spec_name(class_token, tab_index)
     local list = SPEC_NAMES[class_token]
     return list and list[tab_index] or nil
 end
+T.spec_name = mod.spec_name   -- UI seam; retail supplies its own in Scoreboard_Retail.lua
 
 -- ============================================================================
 -- Scanner state
@@ -81,7 +82,6 @@ end
 
 local function tick()
     if not enabled then return end
-    if not T.combat_log then return end
 
     if pending_unit and (GetTime() - pending_started) > INSPECT_TIMEOUT then
         clear_pending()
@@ -128,7 +128,7 @@ local function on_inspect_ready(guid)
 
     if best_points > 0 then
         detected[pending_unit] = { tab = best_tab, points = best_points }
-        local p = T.combat_log.get_player(pending_unit)
+        local p = T.store.get_player(pending_unit)
         if p then
             p.spec_class = p.class
             p.spec_tab   = best_tab
@@ -151,7 +151,7 @@ function mod.merge_pending_into_player(name)
     if not mod._pending_specs then return end
     local tab = mod._pending_specs[name]
     if not tab then return end
-    local p = T.combat_log.get_player(name)
+    local p = T.store.get_player(name)
     if p then
         p.spec_class = p.class
         p.spec_tab   = tab

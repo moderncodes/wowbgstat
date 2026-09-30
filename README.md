@@ -1,14 +1,22 @@
-# BgStat — TBC Anniversary Edition (2.5.6)
+# BgStat — TBC Anniversary (2.5.6) and Retail (12.1)
 
 Battleground stats, killing-blow tracking, and a six-tab post-match window.
 
-Built for **TBC Anniversary**, patch 2.5.6 (Interface `20506`).
+One folder, two clients. The game picks the TOC for its own flavor:
+
+| Client          | TOC                   | Interface |
+|-----------------|-----------------------|-----------|
+| TBC Anniversary | `BgStat.toc`          | `20506`   |
+| Retail          | `BgStat_Mainline.toc` | `120100`  |
+
+See [Retail differences](#retail-differences) for what the retail client does not allow.
 
 ## Installation
 
 1. Extract the `BgStat` folder into:
 ```
-   <WoW>\_anniversary_\Interface\AddOns\
+   <WoW>\_anniversary_\Interface\AddOns\      (TBC Anniversary)
+   <WoW>\_retail_\Interface\AddOns\           (Retail)
 ```
 
    The folder is `_anniversary_`, **not** `_classic_` (TBC Classic 2021)
@@ -86,6 +94,24 @@ Chart depth follows the "Max matches in history" setting.
 | Win/Loss                                                 | `GetBattlefieldWinner()`                                                                                                      |
 | Your personal KBs (spell, killing-hit damage, timestamp) | Combat log `PARTY_KILL` + damage events                                                                                       |
 | Friendly specs                                           | `INSPECT_READY` + `GetTalentTabInfo`                                                                                          |
+
+## Retail differences
+Retail (12.0+) returns *secret values* to addons for the whole length of a PvP match, and no longer delivers the combat log to addons at all. BgStat therefore reads the scoreboard **once, after the match completes**, and nothing before that.
+
+| Feature                          | Retail                                                                                      |
+|----------------------------------|---------------------------------------------------------------------------------------------|
+| Last Match, History, Classes, Trends | Same as Anniversary                                                                     |
+| Specs                            | **Both factions, every player** — the scoreboard lists the spec, no inspecting needed       |
+| Kills                            | Victim, class, time (`PARTY_KILL`). No spell, no killing-hit damage                         |
+| Honor                            | Your scoreboard row (`honorGained`), not chat parsing                                       |
+| Nameplate K/D and rank badges    | Not available — live scoreboard numbers are secret, and unit names can't be matched to rows |
+| Matches you leave early          | Not saved — the scoreboard never unlocks, so there is nothing to record                     |
+
+| Retail data                                  | Source                                                                            |
+|----------------------------------------------|-----------------------------------------------------------------------------------|
+| Kills, deaths, HKs, damage, healing, honor, spec | `C_PvP.GetScoreInfo` after `PVP_MATCH_COMPLETE` (flagged `SecretInActivePvPMatch`) |
+| Win/Loss                                     | `PVP_MATCH_COMPLETE` payload                                                      |
+| Your personal KBs                            | `PARTY_KILL` event + `GetPlayerInfoByGUID`                                        |
 
 ## Notes
 - History is capped at the last 100 matches (configurable via `/bgstat config` or `Config.lua`).
