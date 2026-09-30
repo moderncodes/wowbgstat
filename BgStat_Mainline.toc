@@ -1,4 +1,4 @@
-## Interface: 120100
+## Interface: 120100, 120105
 ## Title: BgStat
 ## Notes: Battleground stats from the end-of-match scoreboard: history, class and spec analytics, trends (Retail 12.1)
 ## Author: TBC Anniversary port
